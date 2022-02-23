@@ -50,7 +50,7 @@ jobs:
         with:
           path: |
             build_artifacts
-          key: ${{ runner.os }}-build-cargo-artifacts-${{ hashFiles('**/*.rs', '**/*.proto'. '**/Cargo.toml')}}
+          key: ${{ runner.os }}-build-cargo-artifacts-${{ hashFiles('**/*.rs', '**/*.proto', '**/Cargo.toml')}}
 
       - name: Cargo Cache
         if: steps.artifact_cache.outputs.cache-hit != 'true'
