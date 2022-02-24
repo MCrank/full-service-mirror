@@ -114,14 +114,14 @@ jobs:
 
       # Create and Upload an Action Artifact on Push and Not a Tag
       - name: Create Artifact
-        if: github.event_name == push && !startsWith(github.ref, 'refs/tags/v')
+        if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/v')
         run: |
           mkdir -p artifact
           cp -R create-release/package-${{ matrix.network }}/* build_artifacts/${{ matrix.network }}
           cd artifact && tar -czvf ${{ github.sha }}-${{ matrix.network }}.tar.gz build_artifacts/${{ matrix.network }}/
 
       - name: Upload Artifact
-        if: github.event_name == push && !startsWith(github.ref, 'refs/tags/v')
+        if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v2
         with:
           name: full-service-mirror_${{ matrix.network }}
