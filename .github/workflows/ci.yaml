@@ -66,8 +66,8 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-${{ matrix.network }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
+          # restore-keys: |
+          #   ${{ runner.os }}-cargo-
 
       - name: Consensus SigStruct
         if: steps.artifact_cache.outputs.cache-hit != 'true'
