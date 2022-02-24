@@ -94,10 +94,10 @@ jobs:
         if: steps.artifact_cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p build_artifacts/${{ matrix.network }}/bin
-          cp /full-service/target/release/full-service build_artifacts/${{ matrix.network }}/bin/
-          cp /full-service/target/release/mc-validator-service build_artifacts/${{ matrix.network }}/bin/
-          cp /target/release/wallet-service-mirror-private build_artifacts/${{ matrix.network }}/bin/
-          cp /target/release/wallet-service-mirror-public build_artifacts/${{ matrix.network }}/bin/
+          cp full-service/target/release/full-service build_artifacts/${{ matrix.network }}/bin/
+          cp full-service/target/release/mc-validator-service build_artifacts/${{ matrix.network }}/bin/
+          cp target/release/wallet-service-mirror-private build_artifacts/${{ matrix.network }}/bin/
+          cp target/release/wallet-service-mirror-public build_artifacts/${{ matrix.network }}/bin/
 
       - name: Get the Tag
         if: startsWith(github.ref, 'refs/tags/v')
