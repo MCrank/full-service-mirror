@@ -66,8 +66,6 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-${{ matrix.network }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          # restore-keys: |
-          #   ${{ runner.os }}-cargo-
 
       - name: Consensus SigStruct
         if: steps.artifact_cache.outputs.cache-hit != 'true'
@@ -127,10 +125,25 @@ jobs:
           cp -R create-release/package-${{ matrix.network }}/* build_artifacts/${{ matrix.network }}
           cd release && tar -czvf ${{ steps.tag.outputs.tag }}-${{ matrix.network }}.tar.gz -C ../build_artifacts/${{ matrix.network }}/ .
 
+      # Does the tag have the "pre" key word in it
+      - name: Is Prerelease
+        id: prerelease
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          if [$REF == *"pre"*]
+          then 
+            echo "::set-output name=prerelease::true"
+          else
+            echo "::set-output name=prerelease::false"
+          fi
+
       - name: Upload Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v1
         with:
+          prerelease: ${{ steps.prerelease.outputs.prerelease }}
           files: release/${{ steps.tag.outputs.tag }}-${{ matrix.network }}.tar.gz
 
   # docker:
