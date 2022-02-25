@@ -46,9 +46,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Prerelease Check
-        run: echo
-
       - name: Cache Build Binaries
         id: artifact_cache
         uses: actions/cache@v2
@@ -130,6 +127,7 @@ jobs:
 
       # Does the tag have the "pre" key word in it? Will mark it as prerelease
       - name: Is Prerelease
+        shell: bash
         id: prerelease
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
