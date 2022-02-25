@@ -15,8 +15,9 @@ on:
   push:
     branches:
       - 'mc-ci'
-      # - 'develop'
-      # - 'release/*'
+      - 'main'
+      - 'develop'
+      - 'release/*'
     tags:
       - 'v*'
 
