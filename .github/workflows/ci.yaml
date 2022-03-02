@@ -160,6 +160,9 @@ jobs:
       tags: ${{ steps.meta.outputs.tags }}
 
     steps:
+      - name: Start with clean workspace
+        run: sudo find . -mindepth 1 -maxdepth 1 -exec rm -rf {} \;
+
       - name: Checkout with submodules
         uses: actions/checkout@v2
         with:
