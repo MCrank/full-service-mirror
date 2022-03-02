@@ -1,0 +1,82 @@
+# syntax=docker/dockerfile:1.2
+
+# Runtime image for the wallet service mirror (public/private) nodes.
+# Binaries included:
+#   full-service, mc-validator-service, full-service-mirror-public, full-service-mirror-private 
+
+# This build requires BuildKit
+
+# Build Args:
+# NAMESPACE                  - test || prod Specifies enclave .css files to download
+# SIGNED_ENCLAVE_BASE        - Base domain for CSS files
+# SIGSTRUCT_JSON_LOCATION    - production.json - JSON file where CSS file paths are located
+# RUST_BIN_PATH_MIRROR       - Rust binary path for mirror services allows local and CI build
+#                               default: target/release
+# RUST_BIN_PATH_FULL_SERVICE - Rust binary path for full-service submodule allows local and CI build
+#                               default: full-service/target/release
+
+FROM ubuntu:focal-20211006
+
+# ARG NAMESPACE=test
+# ARG SIGNED_ENCLAVE_BASE=enclave-distribution.${NAMESPACE}.mobilecoin.com
+# ARG SIGSTRUCT_JSON_LOCATION=production.json
+
+# ENV INGEST_ENCLAVE_CSS=/usr/local/bin/ingest-enclave.css
+# ENV CONSENSUS_ENCLAVE_CSS=/usr/local/bin/consensus-enclave.css
+
+RUN addgroup --system --gid 1000 app \
+  && adduser --system --ingroup app --uid 1000 app \
+  && mkdir /data \
+  && chown app:app /data
+
+RUN apt-get update \
+  && apt-get upgrade -y \
+  && apt-get install -y ca-certificates \
+  && apt-get clean \
+  && rm -r /var/lib/apt/lists \
+  && mkdir -p /usr/share/grpc \
+  && ln -s /etc/ssl/certs/ca-certificates.crt /usr/share/grpc/roots.pem
+
+# Bring in enclave sigstruct
+# ADD https://${SIGNED_ENCLAVE_BASE}/${SIGSTRUCT_JSON_LOCATION} /var/tmp/${SIGSTRUCT_JSON_LOCATION}
+
+# RUN  export CONSENSUS_CSS_URL=$(cat /var/tmp/${SIGSTRUCT_JSON_LOCATION} | jq -r .consensus.sigstruct) \
+#   && export INGEST_CSS_URL=$(cat /var/tmp/${SIGSTRUCT_JSON_LOCATION} | jq -r .ingest.sigstruct) \
+#   && curl https://${SIGNED_ENCLAVE_BASE}/${CONSENSUS_CSS_URL} -o ${CONSENSUS_ENCLAVE_CSS} \
+#   && curl https://${SIGNED_ENCLAVE_BASE}/${INGEST_CSS_URL} -o ${INGEST_ENCLAVE_CSS}
+
+# Copy binaries
+# ARG RUST_BIN_PATH_MIRROR=target/release
+# ARG RUST_BIN_PATH_FULL_SERVICE=full-service/target/release
+# COPY target/release/*.css /usr/local/bin/
+# COPY ${RUST_BIN_PATH_FULL_SERVICE}/full-service /usr/local/bin/full-service
+# COPY ${RUST_BIN_PATH_FULL_SERVICE}/mc-validator-service /usr/local/bin/mc-validator-service
+# COPY ${RUST_BIN_PATH_MIRROR}/wallet-service-mirror-private /usr/local/bin/wallet-service-mirror-private
+# COPY ${RUST_BIN_PATH_MIRROR}/wallet-service-mirror-public /usr/local/bin/wallet-service-mirror-public
+
+COPY build_artifacts/*.css /usr/local/bin/
+COPY build_artifacts/full-service /usr/local/bin/full-service
+COPY build_artifacts/mc-validator-service /usr/local/bin/mc-validator-service
+COPY build_artifacts/wallet-service-mirror-private /usr/local/bin/wallet-service-mirror-private
+COPY build_artifacts/wallet-service-mirror-public /usr/local/bin/wallet-service-mirror-public
+
+USER app
+VOLUME /data
+
+ENV RUST_BACKTRACE="1"
+ENV RUST_LOG=info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error
+ENV RUST_LOG_STYLE="never"
+ENV INGEST_ENCLAVE_CSS=/usr/local/bin/ingest-enclave.css
+ENV CONSENSUS_ENCLAVE_CSS=/usr/local/bin/consensus-enclave.css
+
+# Default ports
+# full-service grpc
+EXPOSE 9090
+# mc-validator-service grpc
+EXPOSE 5554
+# full-service-mirror-public grpc
+EXPOSE 10080
+# full-service-mirror-public http(s) client
+EXPOSE 9091
+
+CMD [ "bash"]
