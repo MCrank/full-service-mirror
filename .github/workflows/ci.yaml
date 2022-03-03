@@ -30,6 +30,8 @@ jobs:
     # Needs write permission for publishing release
     permissions:
       contents: write
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
     container:
       image: mobilecoin/rust-sgx-base:0.0.3
     strategy:
@@ -52,7 +54,7 @@ jobs:
         with:
           path: |
             build_artifacts
-          key: ${{ runner.os }}-${{ matrix.network }}-build-cargo-artifacts-${{ hashFiles('**/*.rs', '**/*.proto', '**/Cargo.toml')}}
+          key: ${{ runner.os }}-${{ matrix.network }}-${{ secrets.CACHE_VERSION }}-build-cargo-artifacts-${{ hashFiles('**/*.rs', '**/*.proto', '**/Cargo.toml')}}
 
       - name: Cache Cargo
         if: steps.artifact_cache.outputs.cache-hit != 'true'
@@ -174,7 +176,24 @@ jobs:
         with:
           path: |
             build_artifacts
-          key: ${{ runner.os }}-${{ matrix.network }}-build-cargo-artifacts-${{ hashFiles('**/*.rs', '**/*.proto', '**/Cargo.toml')}}
+          key: ${{ runner.os }}-${{ matrix.network }}-${{ secrets.CACHE_VERSION }}-build-cargo-artifacts-${{ hashFiles('**/*.rs', '**/*.proto', '**/Cargo.toml')}}
+
+      # Caching seems to not work when you push a tag (I think because of scope) so download the just uploaded release
+      # See issue here: https://github.com/actions/cache/issues/556
+      - name: Download Release on Cache Miss
+        if: steps.artifact_cache.outputs.cache-hit != 'true'
+        uses: duhow/download-github-release-assets@v1
+        with:
+          tag: ${{ needs.build.outputs.tag }}
+          files: |
+            ${{ needs.build.outputs.tag }}-${{ matrix.network }}.tar.gz
+          target: /var/tmp
+
+      - name: Extract Release
+        if: steps.artifact_cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p build_artifacts
+          tar xzvf /var/tmp/${{ needs.build.outputs.tag }}-${{ matrix.network }}.tar.gz -C build_artifacts
 
       - name: Generate Docker Tags
         id: meta
@@ -183,7 +202,7 @@ jobs:
           images: ${{ env.DOCKERHUB_REPO }}
           flavor: |
             latest=false
-            suffix=${{ matrix.network }}
+            suffix=-${{ matrix.network }}
           tags: |
             type=semver,pattern=v{{version}},priority=20
             type=sha,priority=10
