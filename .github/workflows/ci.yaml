@@ -187,7 +187,7 @@ jobs:
           tag: ${{ needs.build.outputs.tag }}
           files: |
             ${{ needs.build.outputs.tag }}-${{ matrix.network }}.tar.gz
-          target: /var/tmp
+          target: /var/tmp/${{ needs.build.outputs.tag }}-${{ matrix.network }}.tar.gz
 
       - name: Extract Release
         if: steps.artifact_cache.outputs.cache-hit != 'true'
