@@ -55,10 +55,10 @@ RUN apt-get update \
 # COPY ${RUST_BIN_PATH_MIRROR}/wallet-service-mirror-public /usr/local/bin/wallet-service-mirror-public
 
 COPY build_artifacts/*.css /usr/local/bin/
-COPY build_artifacts/full-service /usr/local/bin/full-service
-COPY build_artifacts/mc-validator-service /usr/local/bin/mc-validator-service
-COPY build_artifacts/wallet-service-mirror-private /usr/local/bin/wallet-service-mirror-private
-COPY build_artifacts/wallet-service-mirror-public /usr/local/bin/wallet-service-mirror-public
+COPY build_artifacts/bin/full-service /usr/local/bin/full-service
+COPY build_artifacts/bin/mc-validator-service /usr/local/bin/mc-validator-service
+COPY build_artifacts/bin/wallet-service-mirror-private /usr/local/bin/wallet-service-mirror-private
+COPY build_artifacts/bin/wallet-service-mirror-public /usr/local/bin/wallet-service-mirror-public
 
 USER app
 VOLUME /data
