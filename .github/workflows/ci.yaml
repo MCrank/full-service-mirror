@@ -1,4 +1,4 @@
-name: full-service-mirror-build
+name: full-service-mirror-build-release
 
 env:
   # DOCKERHUB_REPO: mobilecoin/full-service-mirror
@@ -14,7 +14,7 @@ env:
 on:
   push:
     branches:
-      # - 'mc-docker'
+      - 'mc-docker'
       - 'main'
       - 'develop'
       - 'release/*'
@@ -190,8 +190,8 @@ jobs:
       - name: Extract Release
         if: steps.artifact_cache.outputs.cache-hit != 'true'
         run: |
-          mkdir -p build_artifacts
-          tar xzvf /var/tmp/${{ needs.build.outputs.tag }}-${{ matrix.network }}.tar.gz -C build_artifacts
+          mkdir -p build_artifacts/${{ matrix.network }}
+          tar xzvf /var/tmp/${{ needs.build.outputs.tag }}-${{ matrix.network }}.tar.gz -C build_artifacts/${{ matrix.network }}
 
       - name: Generate Docker Tags
         id: meta
@@ -221,6 +221,8 @@ jobs:
         id: docker_publish_dockerhub
         uses: docker/build-push-action@v2
         with:
+          build-args: |
+            NETWORK=${{ matrix.network }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           context: .
@@ -228,6 +230,27 @@ jobs:
           push: true
           labels: ${{ steps.meta.outputs.labels }}
           tags: ${{ steps.meta.outputs.tags }}
+
+  # Only create a new tag if push to develop(prerelease) or main(release)
+  tag:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: '0'
+      - name: Github Tag Bump
+        uses: anothrNick/github-tag-action@1.36.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+          RELEASE_BRANCHES: main
+          PRERELEASE_SUFFIX: pre
+          WITH_V: 'true'
+          DEFAULT_BUMP: patch
 
   # deploy-develop:
   #   if: github.ref == 'refs/heads/develop'
