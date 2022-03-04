@@ -58,7 +58,7 @@ jobs:
       - name: Locations
         run: |
           pwd
-          sudo find / -type d -name build_artifacts
+          find / -type d -name build_artifacts
 
       - name: Cache Cargo
         if: steps.artifact_cache.outputs.cache-hit != 'true'
@@ -185,7 +185,7 @@ jobs:
       - name: Locations
         run: |
           pwd
-          sudo find / -type d -name build_artifacts
+          find / -type d -name build_artifacts
 
       # Caching seems to not work when you push a tag (I think because of scope) so download the just uploaded release
       # See issue here: https://github.com/actions/cache/issues/556
