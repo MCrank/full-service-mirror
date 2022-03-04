@@ -9,7 +9,7 @@ The mirror consists of two sides:
 Please Note:
 The set of available requests is defined in the variable `SUPPORTED_ENDPOINTS`, in the [private main file](src/private/main.rs). It is likely you will want to change the `SUPPORTED_ENDPOINTS` to include desired features like sending transactions. 2) A public side. The public side of the mirror accepts incoming HTTP connections from clients, and poll requests from the private side over GRPC. The client requests are then forwarded over the GRPC channel to the private side, which in turn forwards them to `full-service` and returns the responses.
 
-### Example usages
+### Example usage
 
 In the examples below we assume that full-service, and both the public and private sides are all running on the same machine. In a real-world scenario the public and private sides would run on separate machines. The following TCP ports are in play:
 
