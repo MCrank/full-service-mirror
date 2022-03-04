@@ -59,7 +59,7 @@ jobs:
         run: |
           pwd
           find / -type d -name build_artifacts
-          ls -la build_artifacts
+          ls -la build_artifacts/${{ matrix.network }}
 
       - name: Cache Cargo
         if: steps.artifact_cache.outputs.cache-hit != 'true'
