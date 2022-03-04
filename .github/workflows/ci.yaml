@@ -231,6 +231,27 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           tags: ${{ steps.meta.outputs.tags }}
 
+  # Only create a new tag if push to develop(prerelease) or main(release)
+  tag:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: '0'
+      - name: Github Tag Bump
+        uses: anothrNick/github-tag-action@1.36.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+          RELEASE_BRANCHES: main
+          PRERELEASE_SUFFIX: pre
+          WITH_V: 'true'
+          DEFAULT_BUMP: patch
+
   # deploy-develop:
   #   if: github.ref == 'refs/heads/develop'
   #   needs: docker
