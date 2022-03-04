@@ -1,4 +1,4 @@
-name: full-service-mirror-build
+name: full-service-mirror-build-release
 
 env:
   # DOCKERHUB_REPO: mobilecoin/full-service-mirror
@@ -14,7 +14,7 @@ env:
 on:
   push:
     branches:
-      # - 'mc-docker'
+      - 'mc-docker'
       - 'main'
       - 'develop'
       - 'release/*'
@@ -53,6 +53,12 @@ jobs:
           path: |
             build_artifacts
           key: ${{ runner.os }}-${{ matrix.network }}-${{ secrets.CACHE_VERSION }}-build-cargo-artifacts-${{ hashFiles('**/*.rs', '**/*.proto', '**/Cargo.toml')}}
+
+      # Temp to find the directories
+      - name: Locations
+        run: |
+          pwd
+          sudo find / -type d -name build_artifacts
 
       - name: Cache Cargo
         if: steps.artifact_cache.outputs.cache-hit != 'true'
@@ -175,6 +181,11 @@ jobs:
           path: |
             build_artifacts
           key: ${{ runner.os }}-${{ matrix.network }}-${{ secrets.CACHE_VERSION }}-build-cargo-artifacts-${{ hashFiles('**/*.rs', '**/*.proto', '**/Cargo.toml')}}
+
+      - name: Locations
+        run: |
+          pwd
+          sudo find / -type d -name build_artifacts
 
       # Caching seems to not work when you push a tag (I think because of scope) so download the just uploaded release
       # See issue here: https://github.com/actions/cache/issues/556
