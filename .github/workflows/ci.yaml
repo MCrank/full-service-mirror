@@ -54,13 +54,6 @@ jobs:
             build_artifacts
           key: ${{ runner.os }}-${{ matrix.network }}-${{ secrets.CACHE_VERSION }}-build-cargo-artifacts-${{ hashFiles('**/*.rs', '**/*.proto', '**/Cargo.toml')}}
 
-      # Temp to find the directories
-      - name: Locations
-        run: |
-          pwd
-          find / -type d -name build_artifacts
-          ls -la build_artifacts/${{ matrix.network }}
-
       - name: Cache Cargo
         if: steps.artifact_cache.outputs.cache-hit != 'true'
         id: cargo_cache
@@ -183,11 +176,6 @@ jobs:
             build_artifacts
           key: ${{ runner.os }}-${{ matrix.network }}-${{ secrets.CACHE_VERSION }}-build-cargo-artifacts-${{ hashFiles('**/*.rs', '**/*.proto', '**/Cargo.toml')}}
 
-      - name: Locations
-        run: |
-          pwd
-          find / -type d -name build_artifacts
-
       # Caching seems to not work when you push a tag (I think because of scope) so download the just uploaded release
       # See issue here: https://github.com/actions/cache/issues/556
       - name: Download Release on Cache Miss
@@ -202,8 +190,8 @@ jobs:
       - name: Extract Release
         if: steps.artifact_cache.outputs.cache-hit != 'true'
         run: |
-          mkdir -p build_artifacts
-          tar xzvf /var/tmp/${{ needs.build.outputs.tag }}-${{ matrix.network }}.tar.gz -C build_artifacts
+          mkdir -p build_artifacts/${{ matrix.network }}
+          tar xzvf /var/tmp/${{ needs.build.outputs.tag }}-${{ matrix.network }}.tar.gz -C build_artifacts/${{ matrix.network }}
 
       - name: Generate Docker Tags
         id: meta
@@ -233,6 +221,8 @@ jobs:
         id: docker_publish_dockerhub
         uses: docker/build-push-action@v2
         with:
+          build-args: |
+            NETWORK=${{ matrix.network }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           context: .

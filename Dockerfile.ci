@@ -8,6 +8,9 @@
 
 FROM ubuntu:focal-20211006
 
+# Need to pass in testnet/mainnet to grab the build artifacts
+ARG NETWORK
+
 RUN addgroup --system --gid 1000 app \
   && adduser --system --ingroup app --uid 1000 app \
   && mkdir /data \
@@ -21,11 +24,11 @@ RUN apt-get update \
   && mkdir -p /usr/share/grpc \
   && ln -s /etc/ssl/certs/ca-certificates.crt /usr/share/grpc/roots.pem
 
-COPY build_artifacts/*.css /usr/local/bin/
-COPY build_artifacts/bin/full-service /usr/local/bin/full-service
-COPY build_artifacts/bin/mc-validator-service /usr/local/bin/mc-validator-service
-COPY build_artifacts/bin/wallet-service-mirror-private /usr/local/bin/wallet-service-mirror-private
-COPY build_artifacts/bin/wallet-service-mirror-public /usr/local/bin/wallet-service-mirror-public
+COPY build_artifacts/${NETWORK}/*.css /usr/local/bin/
+COPY build_artifacts/${NETWORK}/bin/full-service /usr/local/bin/full-service
+COPY build_artifacts/${NETWORK}/bin/mc-validator-service /usr/local/bin/mc-validator-service
+COPY build_artifacts/${NETWORK}/bin/wallet-service-mirror-private /usr/local/bin/wallet-service-mirror-private
+COPY build_artifacts/${NETWORK}/bin/wallet-service-mirror-public /usr/local/bin/wallet-service-mirror-public
 
 USER app
 VOLUME /data
