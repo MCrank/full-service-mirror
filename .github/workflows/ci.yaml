@@ -14,7 +14,7 @@ env:
 on:
   push:
     branches:
-      - 'mc-docker'
+      # - 'mc-docker'
       - 'main'
       - 'develop'
       - 'release/*'
@@ -232,6 +232,10 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
 
   # Only create a new tag if push to develop(prerelease) or main(release)
+  # Will automatically bump "#patch" by default
+  # Use "#major", "#minor", "#patch". "#none" in commit message to adjust bump.
+  #
+  # Requires mobilecoin-ci user R/W access and ACTIONS_TOKEN
   tag:
     needs: build
     runs-on: ubuntu-latest
