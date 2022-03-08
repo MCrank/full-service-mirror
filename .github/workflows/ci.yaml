@@ -31,8 +31,8 @@ jobs:
         include:
           - namespace: test
             network: testnet
-          - namespace: prod
-            network: mainnet
+          # - namespace: prod
+          #   network: mainnet
 
     steps:
       # - name: Checkout
@@ -40,17 +40,27 @@ jobs:
       #   with:
       #     submodules: recursive
 
-      - name: Get latest release
-        uses: github-actions-tools/gh-list-releases@main
-        id: list-releases
+      # - name: Get latest release
+      #   uses: github-actions-tools/gh-list-releases@main
+      #   id: list-releases
+      #   with:
+      #     nb_results: 10
+      #     prerelease: true
+      # - name: List latest releases
+      #   run: |
+      #     echo '${{ steps.list-releases.outputs.releases }}' | jq -r '.[]' | while read release ; do
+      #       echo "release: ${release}"
+      #     done
+
+      - name: Get Current Release
+        id: get_current_release
+        uses: joutvhu/get-release@v1
         with:
-          nb_results: 10
+          debug: true
+          latest: true
           prerelease: true
-      - name: List latest releases
-        run: |
-          echo '${{ steps.list-releases.outputs.releases }}' | jq -r '.[]' | while read release ; do 
-            echo "release: ${release}"
-          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # # CACHE_VERSION is 'date --iso-8601=minutes' and is used to invalidate cache if needed
       # - name: Cache Build Binaries
