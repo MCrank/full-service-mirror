@@ -44,11 +44,11 @@ jobs:
         uses: github-actions-tools/gh-list-releases@main
         id: list-releases
         with:
-          nb_results: 5
+          nb_results: 10
           prerelease: true
       - name: List latest releases
         run: |
-          echo '${{ steps.list-releases.outputs.releases }}' | jq -r '.[]' | while read release ; do 
+          echo '${{ steps.list-releases.outputs.releases_body }}' | jq -r '.[]' | while read release ; do 
             echo "release: ${release}"
           done
 
