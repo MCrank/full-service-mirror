@@ -1,7 +1,8 @@
 name: full-service-mirror-build
 
 env:
-  DOCKERHUB_REPO: mobilecoin/full-service-mirror
+  # DOCKERHUB_REPO: mobilecoin/full-service-mirror
+  DOCKERHUB_REPO: mcrank/full-service-mirror
   SGX_MODE: HW
   IAS_MODE: PROD
   RUST_BACKTRACE: full
@@ -31,127 +32,104 @@ jobs:
         include:
           - namespace: test
             network: testnet
-          # - namespace: prod
-          #   network: mainnet
+          - namespace: prod
+            network: mainnet
 
     steps:
-      # - name: Checkout
-      #   uses: actions/checkout@v2
-      #   with:
-      #     submodules: recursive
-
-      # - name: Get latest release
-      #   uses: github-actions-tools/gh-list-releases@main
-      #   id: list-releases
-      #   with:
-      #     nb_results: 10
-      #     prerelease: true
-      # - name: List latest releases
-      #   run: |
-      #     echo '${{ steps.list-releases.outputs.releases }}' | jq -r '.[]' | while read release ; do
-      #       echo "release: ${release}"
-      #     done
-
-      - name: Get Current Release
-        id: get_current_release
-        uses: joutvhu/get-release@v1
+      - name: Checkout
+        uses: actions/checkout@v2
         with:
-          debug: true
-          latest: true
+          submodules: recursive
+
+      # CACHE_VERSION is 'date --iso-8601=minutes' and is used to invalidate cache if needed
+      - name: Cache Build Binaries
+        id: artifact_cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            build_artifacts
+          key: ${{ runner.os }}-${{ matrix.network }}-${{ secrets.CACHE_VERSION }}-build-cargo-artifacts-${{ hashFiles('**/*.rs', '**/*.proto', '**/Cargo.toml')}}
+
+      - name: Cache Cargo
+        if: steps.artifact_cache.outputs.cache-hit != 'true'
+        id: cargo_cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            /opt/cargo/git
+            /opt/cargo/registry/index
+            /opt/cargo/registry/cache
+          key: ${{ runner.os }}-${{ matrix.network }}-${{ secrets.CACHE_VERSION }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Consensus SigStruct
+        if: steps.artifact_cache.outputs.cache-hit != 'true'
+        run: |
+          CONSENSUS_SIGSTRUCT_URI=$(curl -s https://enclave-distribution.${{ matrix.namespace }}.mobilecoin.com/production.json | grep consensus-enclave.css | awk '{print $2}' | tr -d \" | tr -d ,)
+          (cd /var/tmp && curl -O https://enclave-distribution.${{ matrix.namespace }}.mobilecoin.com/${CONSENSUS_SIGSTRUCT_URI})
+
+      - name: Ingest SigStruct
+        if: steps.artifact_cache.outputs.cache-hit != 'true'
+        run: |
+          INGEST_SIGSTRUCT_URI=$(curl -s https://enclave-distribution.${{ matrix.namespace }}.mobilecoin.com/production.json | grep ingest-enclave.css | awk '{print $2}' | tr -d \" | tr -d ,)
+          (cd /var/tmp && curl -O https://enclave-distribution.${{ matrix.namespace }}.mobilecoin.com/${INGEST_SIGSTRUCT_URI})
+
+      - name: Cargo Build
+        if: steps.artifact_cache.outputs.cache-hit != 'true'
+        run: |
+          cargo build --release \
+          --manifest-path full-service/Cargo.toml \
+          -p mc-full-service \
+          -p mc-validator-service \
+          && cargo build --release
+
+      - name: Copy binaries to cache folder
+        if: steps.artifact_cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p build_artifacts/${{ matrix.network }}/bin
+          cp /var/tmp/*.css build_artifacts/${{ matrix.network }}
+          cp -R create-release/package-${{ matrix.network }}/* build_artifacts/${{ matrix.network }}
+          cp full-service/target/release/full-service build_artifacts/${{ matrix.network }}/bin/
+          cp full-service/target/release/mc-validator-service build_artifacts/${{ matrix.network }}/bin/
+          cp target/release/wallet-service-mirror-private build_artifacts/${{ matrix.network }}/bin/
+          cp target/release/wallet-service-mirror-public build_artifacts/${{ matrix.network }}/bin/
+
+      # Create and Upload an Artifact on Push
+      - name: Create Artifact
+        if: startsWith(github.ref, 'refs/heads/')
+        run: |
+          mkdir -p artifact
+          cd artifact && tar -czvf ${{ github.sha }}-${{ matrix.network }}.tar.gz -C ../build_artifacts/${{ matrix.network }}/ .
+
+      - name: Upload Artifact
+        if: startsWith(github.ref, 'refs/heads/')
+        uses: actions/upload-artifact@v2
+        with:
+          name: full-service-mirror_${{ matrix.network }}
+          path: artifact/${{ github.sha }}-${{ matrix.network }}.tar.gz
+
+      - name: Get the current branch name
+        if: startsWith(github.ref, 'refs/heads/release')
+        id: release_semver
+        shell: bash
+        run: echo "::set-output name=semver::${GITHUB_BRANCH##*/}"
+
+      - name: Print Release Branch semver
+        if: startsWith(github.ref, 'refs/heads/release')
+        run: |
+          echo '${{ steps.release_semver.outputs.semver }}'
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/heads/release')
+        run: |
+          mkdir -p release
+          cd release && tar -czvf ${{ steps.release_semver.outputs.semver }}-${{ matrix.network }}.tar.gz -C ../build_artifacts/${{ matrix.network }}/ .
+
+      - name: Upload Release
+        if: startsWith(github.ref, 'refs/heads/release')
+        uses: softprops/action-gh-release@v1
+        with:
           prerelease: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # # CACHE_VERSION is 'date --iso-8601=minutes' and is used to invalidate cache if needed
-      # - name: Cache Build Binaries
-      #   id: artifact_cache
-      #   uses: actions/cache@v2
-      #   with:
-      #     path: |
-      #       build_artifacts
-      #     key: ${{ runner.os }}-${{ matrix.network }}-${{ secrets.CACHE_VERSION }}-build-cargo-artifacts-${{ hashFiles('**/*.rs', '**/*.proto', '**/Cargo.toml')}}
-
-      # - name: Cache Cargo
-      #   if: steps.artifact_cache.outputs.cache-hit != 'true'
-      #   id: cargo_cache
-      #   uses: actions/cache@v2
-      #   with:
-      #     path: |
-      #       /opt/cargo/git
-      #       /opt/cargo/registry/index
-      #       /opt/cargo/registry/cache
-      #     key: ${{ runner.os }}-${{ matrix.network }}-${{ secrets.CACHE_VERSION }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-      # - name: Consensus SigStruct
-      #   if: steps.artifact_cache.outputs.cache-hit != 'true'
-      #   run: |
-      #     CONSENSUS_SIGSTRUCT_URI=$(curl -s https://enclave-distribution.${{ matrix.namespace }}.mobilecoin.com/production.json | grep consensus-enclave.css | awk '{print $2}' | tr -d \" | tr -d ,)
-      #     (cd /var/tmp && curl -O https://enclave-distribution.${{ matrix.namespace }}.mobilecoin.com/${CONSENSUS_SIGSTRUCT_URI})
-
-      # - name: Ingest SigStruct
-      #   if: steps.artifact_cache.outputs.cache-hit != 'true'
-      #   run: |
-      #     INGEST_SIGSTRUCT_URI=$(curl -s https://enclave-distribution.${{ matrix.namespace }}.mobilecoin.com/production.json | grep ingest-enclave.css | awk '{print $2}' | tr -d \" | tr -d ,)
-      #     (cd /var/tmp && curl -O https://enclave-distribution.${{ matrix.namespace }}.mobilecoin.com/${INGEST_SIGSTRUCT_URI})
-
-      # - name: Cargo Build
-      #   if: steps.artifact_cache.outputs.cache-hit != 'true'
-      #   run: |
-      #     cargo build --release \
-      #     --manifest-path full-service/Cargo.toml \
-      #     -p mc-full-service \
-      #     -p mc-validator-service \
-      #     && cargo build --release
-
-      # - name: Copy binaries to cache folder
-      #   if: steps.artifact_cache.outputs.cache-hit != 'true'
-      #   run: |
-      #     mkdir -p build_artifacts/${{ matrix.network }}/bin
-      #     cp /var/tmp/*.css build_artifacts/${{ matrix.network }}
-      #     cp -R create-release/package-${{ matrix.network }}/* build_artifacts/${{ matrix.network }}
-      #     cp full-service/target/release/full-service build_artifacts/${{ matrix.network }}/bin/
-      #     cp full-service/target/release/mc-validator-service build_artifacts/${{ matrix.network }}/bin/
-      #     cp target/release/wallet-service-mirror-private build_artifacts/${{ matrix.network }}/bin/
-      #     cp target/release/wallet-service-mirror-public build_artifacts/${{ matrix.network }}/bin/
-
-      # # Create and Upload an Artifact on Push
-      # - name: Create Artifact
-      #   if: startsWith(github.ref, 'refs/heads/')
-      #   run: |
-      #     mkdir -p artifact
-      #     cd artifact && tar -czvf ${{ github.sha }}-${{ matrix.network }}.tar.gz -C ../build_artifacts/${{ matrix.network }}/ .
-
-      # - name: Upload Artifact
-      #   if: startsWith(github.ref, 'refs/heads/')
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: full-service-mirror_${{ matrix.network }}
-      #     path: artifact/${{ github.sha }}-${{ matrix.network }}.tar.gz
-
-      # - name: Create Release
-      #   if: startsWith(github.ref, 'refs/heads/release')
-      #   run: |
-      #     mkdir -p release
-      #     cd release && tar -czvf ${{ github.ref_name }}-${{ matrix.network }}.tar.gz -C ../build_artifacts/${{ matrix.network }}/ .
-
-      # Does the tag have the "pre" key word in it? Will mark it as prerelease
-      # - name: Is Prerelease
-      #   shell: bash
-      #   id: prerelease
-      #   if: startsWith(github.ref, 'refs/heads/release/')
-      #   run: |
-      #     if [[ "${GITHUB_REF}" =~ pre ]]; then
-      #       echo ::set-output name=value::true
-      #     else
-      #       echo ::set-output name=value::false
-      #     fi
-
-      # - name: Upload Release
-      #   if: startsWith(github.ref, 'refs/heads/release/')
-      #   uses: softprops/action-gh-release@v1
-      #   with:
-      #     prerelease: true
-      #     files: release/${{ github.ref_name }}-${{ matrix.network }}.tar.gz
+          files: release/${{ steps.release_semver.outputs.semver }}-${{ matrix.network }}.tar.gz
 
   # docker:
   #   if: startsWith(github.ref, 'refs/tags/v')
@@ -239,7 +217,7 @@ jobs:
   # Only create a new tag if push to develop(prerelease) or main(release)
   # Will automatically bump "#patch" by default
   # Use "#major", "#minor", "#patch". "#none" in commit message to adjust bump.
-  #
+
   # Requires mobilecoin-ci user R/W access and ACTIONS_TOKEN
 
   # tag:
