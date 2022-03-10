@@ -35,6 +35,8 @@ jobs:
             network: testnet
           - namespace: prod
             network: mainnet
+    outputs:
+      release_semver: ${{ steps.release_semver.outputs.tag }}
 
     steps:
       - name: Checkout
@@ -143,7 +145,7 @@ jobs:
     needs: build
     uses: ./.github/workflows/docker.yaml
     with:
-      tag: ${{ steps.release_semver.outputs.tag }}
+      tag: ${{ needs.build.outputs.release_semver }}
 
   # Only create a new tag if push to develop(prerelease) or main(release)
   # Will automatically bump "#patch" by default
