@@ -119,7 +119,7 @@ jobs:
         shell: bash
         run: |
           if [[ "${GITHUB_REF}" =~ 'refs/heads/release' ]]; then
-            echo "::set-output name=tag::${GITHUB_BRANCH##*/}-pre"
+            echo "::set-output name=tag::${github.ref##*/}-pre"
           else
             echo "::set-output name=tag::${github.ref_name}"
           fi
