@@ -17,8 +17,8 @@ on:
       - 'develop'
       - 'release/*'
       - 'feature/*'
-    tags:
-      - 'v*'
+    # tags:
+    #   - 'v*'
 
 jobs:
   build:
@@ -109,35 +109,47 @@ jobs:
           name: full-service-mirror_${{ matrix.network }}
           path: artifact/${{ github.sha }}-${{ matrix.network }}.tar.gz
 
-      - name: Get the current branch name
-        if: startsWith(github.ref, 'refs/heads/release')
+      # Release branch or tag
+      - name: Set the semver for tagging
+        if: startsWith(github.ref, 'refs/heads/release') || github.ref == 'refs/tags/v'
         id: release_semver
         shell: bash
-        run: echo "::set-output name=semver::${GITHUB_BRANCH##*/}"
+        run: |
+          if [[ "${GITHUB_REF}" =~ 'refs/heads/release' ]]; then
+            echo "::set-output name=tag::${GITHUB_BRANCH##*/}-pre"
+          else
+            echo "::set-output name=tag::${github.ref_name}"
 
       - name: Print Release Branch semver
         if: startsWith(github.ref, 'refs/heads/release')
         run: |
-          echo '${{ steps.release_semver.outputs.semver }}'
+          echo '${{ steps.release_semver.outputs.tag }}'
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/heads/release')
         run: |
           mkdir -p release
-          cd release && tar -czvf ${{ steps.release_semver.outputs.semver }}-${{ matrix.network }}.tar.gz -C ../build_artifacts/${{ matrix.network }}/ .
+          cd release && tar -czvf ${{ steps.release_semver.outputs.tag }}-${{ matrix.network }}.tar.gz -C ../build_artifacts/${{ matrix.network }}/ .
 
       - name: Upload Release
         if: startsWith(github.ref, 'refs/heads/release')
         uses: softprops/action-gh-release@v1
         with:
           prerelease: true
-          files: release/${{ steps.release_semver.outputs.semver }}-${{ matrix.network }}.tar.gz
+          files: release/${{ steps.release_semver.outputs.tag }}-${{ matrix.network }}.tar.gz
 
-  # # Only create a new tag if push to develop(prerelease) or main(release)
-  # # Will automatically bump "#patch" by default
-  # # Use "#major", "#minor", "#patch". "#none" in commit message to adjust bump.
-  # #
-  # # Requires mobilecoin-ci user R/W access and ACTIONS_TOKEN
+  docker:
+    if: startsWith(github.ref, 'refs/heads/release') || github.ref == 'refs/tags/v'
+    needs: build
+    uses: .github/workflows/docker.yaml
+    with:
+      tag: ${{ steps.release_semver.outputs.tag }}
+
+  # Only create a new tag if push to develop(prerelease) or main(release)
+  # Will automatically bump "#patch" by default
+  # Use "#major", "#minor", "#patch". "#none" in commit message to adjust bump.
+  #
+  # Requires mobilecoin-ci user R/W access and ACTIONS_TOKEN
   # tag:
   #   needs: build
   #   runs-on: ubuntu-latest
@@ -153,10 +165,11 @@ jobs:
   #       uses: anothrNick/github-tag-action@1.36.0
   #       env:
   #         GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
-  #         RELEASE_BRANCHES: main
-  #         PRERELEASE_SUFFIX: pre
-  #         WITH_V: 'true'
-  #         DEFAULT_BUMP: patch
+  #         CUSTOM_TAG: ${{ steps.release_semver.outputs.semver }}
+  # RELEASE_BRANCHES: main
+  # PRERELEASE_SUFFIX: pre
+  # WITH_V: 'true'
+  # DEFAULT_BUMP: patch
 
   # deploy-develop:
   #   if: github.ref == 'refs/heads/develop'
