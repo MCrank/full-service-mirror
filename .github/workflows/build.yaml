@@ -77,40 +77,40 @@ jobs:
           INGEST_SIGSTRUCT_URI=$(curl -s https://enclave-distribution.${{ matrix.namespace }}.mobilecoin.com/production.json | grep ingest-enclave.css | awk '{print $2}' | tr -d \" | tr -d ,)
           (cd /var/tmp && curl -O https://enclave-distribution.${{ matrix.namespace }}.mobilecoin.com/${INGEST_SIGSTRUCT_URI})
 
-      - name: Cargo Build
-        if: steps.artifact_cache.outputs.cache-hit != 'true'
-        run: |
-          cargo build --release \
-          --manifest-path full-service/Cargo.toml \
-          -p mc-full-service \
-          -p mc-validator-service \
-          && cargo build --release
+      # - name: Cargo Build
+      #   if: steps.artifact_cache.outputs.cache-hit != 'true'
+      #   run: |
+      #     cargo build --release \
+      #     --manifest-path full-service/Cargo.toml \
+      #     -p mc-full-service \
+      #     -p mc-validator-service \
+      #     && cargo build --release
 
-      - name: Copy binaries to cache folder
-        if: steps.artifact_cache.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p build_artifacts/${{ matrix.network }}/bin
-          cp /var/tmp/*.css build_artifacts/${{ matrix.network }}
-          cp -R create-release/package-${{ matrix.network }}/* build_artifacts/${{ matrix.network }}
-          cp full-service/target/release/full-service build_artifacts/${{ matrix.network }}/bin/
-          cp full-service/target/release/mc-validator-service build_artifacts/${{ matrix.network }}/bin/
-          cp target/release/wallet-service-mirror-private build_artifacts/${{ matrix.network }}/bin/
-          cp target/release/wallet-service-mirror-public build_artifacts/${{ matrix.network }}/bin/
-          cp target/release/generate-rsa-keypair build_artifacts/${{ matrix.network }}/bin/
+      # - name: Copy binaries to cache folder
+      #   if: steps.artifact_cache.outputs.cache-hit != 'true'
+      #   run: |
+      #     mkdir -p build_artifacts/${{ matrix.network }}/bin
+      #     cp /var/tmp/*.css build_artifacts/${{ matrix.network }}
+      #     cp -R create-release/package-${{ matrix.network }}/* build_artifacts/${{ matrix.network }}
+      #     cp full-service/target/release/full-service build_artifacts/${{ matrix.network }}/bin/
+      #     cp full-service/target/release/mc-validator-service build_artifacts/${{ matrix.network }}/bin/
+      #     cp target/release/wallet-service-mirror-private build_artifacts/${{ matrix.network }}/bin/
+      #     cp target/release/wallet-service-mirror-public build_artifacts/${{ matrix.network }}/bin/
+      #     cp target/release/generate-rsa-keypair build_artifacts/${{ matrix.network }}/bin/
 
       # Create and Upload an Artifact on Push
-      - name: Create Artifact
-        if: startsWith(github.ref, 'refs/heads/')
-        run: |
-          mkdir -p artifact
-          cd artifact && tar -czvf ${{ github.sha }}-${{ matrix.network }}.tar.gz -C ../build_artifacts/${{ matrix.network }}/ .
+      # - name: Create Artifact
+      #   if: startsWith(github.ref, 'refs/heads/')
+      #   run: |
+      #     mkdir -p artifact
+      #     cd artifact && tar -czvf ${{ github.sha }}-${{ matrix.network }}.tar.gz -C ../build_artifacts/${{ matrix.network }}/ .
 
-      - name: Upload Artifact
-        if: startsWith(github.ref, 'refs/heads/')
-        uses: actions/upload-artifact@v2
-        with:
-          name: full-service-mirror_${{ matrix.network }}
-          path: artifact/${{ github.sha }}-${{ matrix.network }}.tar.gz
+      # - name: Upload Artifact
+      #   if: startsWith(github.ref, 'refs/heads/')
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: full-service-mirror_${{ matrix.network }}
+      #     path: artifact/${{ github.sha }}-${{ matrix.network }}.tar.gz
 
       # Release branch or tag
       - name: Set the semver for tagging
@@ -118,8 +118,10 @@ jobs:
         id: release_semver
         shell: bash
         run: |
+          echo ${GITHUB_REF}
+          echo ${github.ref}
           if [[ "${GITHUB_REF}" =~ 'refs/heads/release' ]]; then
-            echo "::set-output name=tag::${github.ref##*/}-pre"
+            echo "::set-output name=tag::${GITHUB_REF##*/}-pre"
           else
             echo "::set-output name=tag::${github.ref_name}"
           fi
@@ -129,25 +131,25 @@ jobs:
         run: |
           echo '${{ steps.release_semver.outputs.tag }}'
 
-      - name: Create Release
-        if: startsWith(github.ref, 'refs/heads/release')
-        run: |
-          mkdir -p release
-          cd release && tar -czvf ${{ steps.release_semver.outputs.tag }}-${{ matrix.network }}.tar.gz -C ../build_artifacts/${{ matrix.network }}/ .
+      # - name: Create Release
+      #   if: startsWith(github.ref, 'refs/heads/release')
+      #   run: |
+      #     mkdir -p release
+      #     cd release && tar -czvf ${{ steps.release_semver.outputs.tag }}-${{ matrix.network }}.tar.gz -C ../build_artifacts/${{ matrix.network }}/ .
 
-      - name: Upload Release
-        if: startsWith(github.ref, 'refs/heads/release')
-        uses: softprops/action-gh-release@v1
-        with:
-          prerelease: true
-          files: release/${{ steps.release_semver.outputs.tag }}-${{ matrix.network }}.tar.gz
+      # - name: Upload Release
+      #   if: startsWith(github.ref, 'refs/heads/release')
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     prerelease: true
+      #     files: release/${{ steps.release_semver.outputs.tag }}-${{ matrix.network }}.tar.gz
 
-  docker:
-    if: startsWith(github.ref, 'refs/heads/release') || github.ref == 'refs/tags/v'
-    needs: build
-    uses: ./.github/workflows/docker.yaml
-    with:
-      tag: ${{ needs.build.outputs.release_semver }}
+  # docker:
+  #   if: startsWith(github.ref, 'refs/heads/release') || github.ref == 'refs/tags/v'
+  #   needs: build
+  #   uses: ./.github/workflows/docker.yaml
+  #   with:
+  #     tag: ${{ needs.build.outputs.release_semver }}
 
   # Only create a new tag if push to develop(prerelease) or main(release)
   # Will automatically bump "#patch" by default
