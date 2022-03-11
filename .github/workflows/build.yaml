@@ -131,6 +131,14 @@ jobs:
         run: |
           echo '${{ steps.release_semver.outputs.tag }}'
 
+      # Requires mobilecoin-ci user R/W access and ACTIONS_TOKEN
+      - name: Github Tag Bump
+        if: startsWith(github.ref, 'refs/heads/release')
+        uses: anothrNick/github-tag-action@1.36.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+          CUSTOM_TAG: ${{ steps.release_semver.outputs.tag }}
+
       - name: Create Release
         if: startsWith(github.ref, 'refs/heads/release')
         run: |
