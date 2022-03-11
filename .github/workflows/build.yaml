@@ -34,6 +34,10 @@ jobs:
 
     steps:
       # Release branch or tag
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: '0'
       - name: Set the semver for tagging
         id: release_semver
         shell: bash
