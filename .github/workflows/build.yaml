@@ -55,7 +55,7 @@ jobs:
       - name: Github Tag Bump
         id: tag_bump
         # if: startsWith(github.ref, 'refs/heads/release')
-        uses: anothrNick/github-tag-action@1.36.0
+        uses: anothrNick/github-tag-action@1.35.0
         env:
           GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
           # CUSTOM_TAG: ${{ steps.release_semver.outputs.tag }}
