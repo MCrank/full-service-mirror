@@ -63,7 +63,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
           # CUSTOM_TAG: ${{ steps.release_semver.outputs.tag }}
-          INITIAL_VERSION: ${{ steps.release_semver.outputs.tag }}
+          INITIAL_VERSION: 4.0.0 #${{ steps.release_semver.outputs.tag }}
           DRY_RUN: true
           RELEASE_BRANCHES: main
           PRERELEASE_SUFFIX: pre
