@@ -52,27 +52,28 @@ jobs:
           echo '${{ steps.release_semver.outputs.tag }}'
 
       # Requires mobilecoin-ci user R/W access and ACTIONS_TOKEN
-      # - name: Github Tag Bump
-      #   id: tag_bump
-      #   # if: startsWith(github.ref, 'refs/heads/release')
-      #   uses: anothrNick/github-tag-action@1.36.0
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
-      #     # CUSTOM_TAG: ${{ steps.release_semver.outputs.tag }}
-      #     # INITIAL_VERSION: ${{ steps.release_semver.outputs.tag }}
-      #     DRY_RUN: true
-      #     RELEASE_BRANCHES: main
-      #     PRERELEASE_SUFFIX: pre
-      #     WITH_V: 'true'
-      #     DEFAULT_BUMP: patch
-
-      - name: Tagging
+      - name: Github Tag Bump
         id: tag_bump
-        uses: craig-day/compute-tag@v13
-        with:
-          github_token: ${{ secrets.ACTIONS_TOKEN }}
-          tag: ${{ steps.release_semver.outputs.tag }}
-          prerelease_suffix: pre
+        # if: startsWith(github.ref, 'refs/heads/release')
+        uses: anothrNick/github-tag-action@1.36.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+          # CUSTOM_TAG: ${{ steps.release_semver.outputs.tag }}
+          INITIAL_VERSION: ${{ steps.release_semver.outputs.tag }}
+          DRY_RUN: true
+          RELEASE_BRANCHES: main
+          PRERELEASE_SUFFIX: pre
+          WITH_V: 'true'
+          DEFAULT_BUMP: patch
+
+      # - name: Tagging
+      #   id: tag_bump
+      #   uses: craig-day/compute-tag@v13
+      #   with:
+      #     github_token: ${{ secrets.ACTIONS_TOKEN }}
+      #     tag: ${{ steps.release_semver.outputs.tag }}
+      #     prerelease_suffix: pre
+      #     version_type: prerelease
 
   # docker:
   #   if: startsWith(github.ref, 'refs/heads/release') || github.ref == 'refs/tags/v'
