@@ -11,6 +11,9 @@ env:
 
 on:
   workflow_call:
+    secrets:
+      action_token:
+        required: true
 
 jobs:
   tag:
@@ -28,7 +31,7 @@ jobs:
         id: tag_bump
         uses: anothrNick/github-tag-action@1.36.0
         env:
-          GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.action_token }}
           RELEASE_BRANCHES: main
           PRERELEASE_SUFFIX: pre
           WITH_V: 'true'

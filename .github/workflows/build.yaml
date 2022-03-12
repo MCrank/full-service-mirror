@@ -113,8 +113,8 @@ jobs:
       contents: write
     needs: build
     uses: ./.github/workflows/release.yaml
-    # with:
-    #   tag: ${{ needs.build.outputs.release_semver }}
+    with:
+      action_token: ${{ secrets.ACTIONS_TOKEN }}
 
   # docker:
   #   if: startsWith(github.ref, 'refs/heads/release') || github.ref == 'refs/tags/v'
