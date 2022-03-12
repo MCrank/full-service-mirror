@@ -113,7 +113,7 @@ jobs:
       contents: write
     needs: build
     uses: ./.github/workflows/release.yaml
-    with:
+    secrets:
       action_token: ${{ secrets.ACTIONS_TOKEN }}
 
   # docker:
