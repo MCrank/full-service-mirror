@@ -1,0 +1,106 @@
+name: fsm-release
+
+env:
+  # DOCKERHUB_REPO: mobilecoin/full-service-mirror
+  DOCKERHUB_REPO: mcrank/full-service-mirror
+  # SGX_MODE: HW
+  # IAS_MODE: PROD
+  # RUST_BACKTRACE: full
+  # CONSENSUS_ENCLAVE_CSS: /var/tmp/consensus-enclave.css
+  # INGEST_ENCLAVE_CSS: /var/tmp/ingest-enclave.css
+
+on:
+  workflow_call:
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      new_tag: ${{ steps.tag_bump.outputs.new_tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: '0'
+      - name: Github Tag Bump
+        id: tag_bump
+        uses: anothrNick/github-tag-action@1.36.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+          RELEASE_BRANCHES: main
+          PRERELEASE_SUFFIX: pre
+          WITH_V: 'true'
+          DEFAULT_BUMP: patch
+          DRY_RUN: true
+
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        include:
+          - name: test
+            network: testnet
+          - name: prod
+            network: mainnet
+
+    steps:
+      # Download the build artifact if it is release/v* branch
+      - name: Download Build Artifact
+        id: artifact_download
+        if: startsWith(github.ref, 'refs/heads/release')
+        uses: actions/download-artifact@v3
+        with:
+          name: full-service-mirror_${{ matrix.network }}
+          path: /var/tmp
+
+      - name: Display download structure
+        run: ls -la /var/tmp/
+
+      # - name: Get Current Pre-Release
+      #   id: current_release
+      #   uses: joutvhu/get-release@v1
+      #   with:
+      #     debug: true
+      #     latest: true
+      #     prerelease: true
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # - name: Download Latest Pre-Release
+      #   if: steps.artifact_cache.outputs.cache-hit != 'true'
+      #   uses: duhow/download-github-release-assets@v1
+      #   with:
+      #     tag: ${{ steps.current_release.outputs.tag_name }}
+      #     files: |
+      #       ${{ steps.current_release.outputs.tag_name }}-${{ matrix.network }}.tar.gz
+      #     target: /var/tmp/${{ steps.current_release.outputs.tag_name }}-${{ matrix.network }}.tar.gz
+
+      # # Create a Release
+      # - name: Create Release
+      #   if: startsWith(github.ref, 'refs/tags/v')
+      #   run: |
+      #     mkdir -p release
+      #     cd release && tar -czvf ${{ github.ref_name }}-${{ matrix.network }}.tar.gz -C ../build_artifacts/${{ matrix.network }}/ .
+
+      # # Does the tag have the "pre" key word in it? Will mark it as prerelease
+      # - name: Is Prerelease
+      #   shell: bash
+      #   id: prerelease
+      #   if: startsWith(github.ref, 'refs/tags/v')
+      #   run: |
+      #     if [[ "${GITHUB_REF}" =~ pre ]]; then
+      #       echo ::set-output name=value::true
+      #     else
+      #       echo ::set-output name=value::false
+      #     fi
+
+      # - name: Upload Release
+      #   if: startsWith(github.ref, 'refs/tags/v')
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     prerelease: ${{ steps.prerelease.outputs.value }}
+      #     files: release/${{ github.ref_name }}-${{ matrix.network }}.tar.gz

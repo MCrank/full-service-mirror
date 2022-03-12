@@ -107,12 +107,12 @@ jobs:
           name: full-service-mirror_${{ matrix.network }}
           path: artifact/${{ github.sha }}-${{ matrix.network }}.tar.gz
 
-  # release:
-  #   if: startsWith(github.ref, 'refs/heads/release') || github.ref == 'refs/heads/main'
-  #   needs: build
-  #   uses: ./.github/workflows/release.yaml
-  #   with:
-  #     tag: ${{ needs.build.outputs.release_semver }}
+  release:
+    if: startsWith(github.ref, 'refs/heads/release') || github.ref == 'refs/heads/main'
+    needs: build
+    uses: ./.github/workflows/release.yaml
+    # with:
+    #   tag: ${{ needs.build.outputs.release_semver }}
 
   # docker:
   #   if: startsWith(github.ref, 'refs/heads/release') || github.ref == 'refs/tags/v'
