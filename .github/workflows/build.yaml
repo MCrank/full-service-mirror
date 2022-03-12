@@ -109,6 +109,8 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/heads/release') || github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
     needs: build
     uses: ./.github/workflows/release.yaml
     # with:

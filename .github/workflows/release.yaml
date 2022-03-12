@@ -15,8 +15,8 @@ on:
 jobs:
   tag:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    # permissions:
+    #   contents: write
     outputs:
       new_tag: ${{ steps.tag_bump.outputs.new_tag }}
     steps:
