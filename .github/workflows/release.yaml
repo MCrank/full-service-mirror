@@ -15,8 +15,6 @@ on:
 jobs:
   tag:
     runs-on: ubuntu-latest
-    # permissions:
-    #   contents: write
     outputs:
       new_tag: ${{ steps.tag_bump.outputs.new_tag }}
     steps:
@@ -33,12 +31,12 @@ jobs:
           PRERELEASE_SUFFIX: pre
           WITH_V: 'true'
           DEFAULT_BUMP: patch
-          DRY_RUN: true
+          # DRY_RUN: true
 
-  release:
+  pre-release:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    if: startsWith(github.ref, 'refs/heads/release')
+    needs: tag
     strategy:
       matrix:
         include:
@@ -51,7 +49,6 @@ jobs:
       # Download the build artifact if it is release/v* branch
       - name: Download Build Artifact
         id: artifact_download
-        if: startsWith(github.ref, 'refs/heads/release')
         uses: actions/download-artifact@v3
         with:
           name: full-service-mirror_${{ matrix.network }}
@@ -59,6 +56,20 @@ jobs:
 
       - name: Display download structure
         run: ls -la /var/tmp/
+
+      - name: Create Prerelease Artifact
+        run: mv /var/tmp/${{ github.sha }}-${{ matrix.network }}.tar.gz /var/tmp/${{ needs.tag.outputs.new_tag }}-${{ matrix.network }}.tar.gz
+
+      - name: Upload Release
+        uses: softprops/action-gh-release@v1
+        with:
+          prerelease: true
+          files: /var/tmp/${{ needs.tag.outputs.new_tag }}-${{ matrix.network }}.tar.gz
+
+      # - name: Extract Release
+      #   run: |
+      #     mkdir -p build_artifacts/${{ matrix.network }}
+      #     tar xzvf /var/tmp/${{ github.sha }}-${{ matrix.network }}.tar.gz -C build_artifacts/${{ matrix.network }}
 
       # - name: Get Current Pre-Release
       #   id: current_release
@@ -104,3 +115,39 @@ jobs:
       #   with:
       #     prerelease: ${{ steps.prerelease.outputs.value }}
       #     files: release/${{ github.ref_name }}-${{ matrix.network }}.tar.gz
+
+  #  START RELEASE FROM HERE
+  # release:
+  #   runs-on: ubuntu-latest
+  #   if: startsWith(github.ref, 'refs/heads/main')
+  #   needs: tag
+  #   strategy:
+  #     matrix:
+  #       include:
+  #         - name: test
+  #           network: testnet
+  #         - name: prod
+  #           network: mainnet
+
+  #   steps:
+  #     - name: Get Current Pre-Release
+  #       id: current_release
+  #       uses: joutvhu/get-release@v1
+  #       with:
+  #         debug: true
+  #         latest: true
+  #         prerelease: true
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  #     - name: Download Latest Pre-Release
+  #       if: steps.artifact_cache.outputs.cache-hit != 'true'
+  #       uses: duhow/download-github-release-assets@v1
+  #       with:
+  #         tag: ${{ steps.current_release.outputs.tag_name }}
+  #         files: |
+  #           ${{ steps.current_release.outputs.tag_name }}-${{ matrix.network }}.tar.gz
+  #         target: /var/tmp/${{ steps.current_release.outputs.tag_name }}-${{ matrix.network }}.tar.gz
+
+  #     - name: Display download structure
+  #       run: ls -la /var/tmp/
