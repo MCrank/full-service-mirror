@@ -12,13 +12,11 @@ env:
 on:
   push:
     branches:
-      - 'main'
       - 'develop'
-      - 'release/*'
       - 'feature/*'
       - 'hotfix/*'
-    # tags:
-    #   - 'v*'
+    tags:
+      - 'v*'
 
 jobs:
   build:
@@ -107,30 +105,30 @@ jobs:
           name: full-service-mirror_${{ matrix.network }}
           path: artifact/${{ github.sha }}-${{ matrix.network }}.tar.gz
 
-  # Only create a new tag if push to develop(prerelease) or main(release)
-  # Will automatically bump "#patch" by default
-  # Use "#major", "#minor", "#patch". "#none" in commit message to adjust bump.
-  #
-  # Requires mobilecoin-ci user R/W access and ACTIONS_TOKEN
-  tag:
-    needs: build
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/heads/release/') || github.ref == 'refs/heads/main'
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          mkdir -p release
+          cd release && tar -czvf ${{ github.ref_name }}-${{ matrix.network }}.tar.gz -C ../build_artifacts/${{ matrix.network }}/ .
+
+      # Does the tag have the "pre" key word in it? Will mark it as prerelease
+      - name: Is Prerelease
+        shell: bash
+        id: prerelease
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          if [[ "${GITHUB_REF}" =~ pre ]]; then
+            echo ::set-output name=value::true
+          else
+            echo ::set-output name=value::false
+          fi
+
+      - name: Upload Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
         with:
-          fetch-depth: '0'
-      - name: Github Tag Bump
-        uses: anothrNick/github-tag-action@1.36.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
-          RELEASE_BRANCHES: main
-          PRERELEASE_SUFFIX: pre
-          WITH_V: 'true'
-          DEFAULT_BUMP: patch
+          prerelease: ${{ steps.prerelease.outputs.value }}
+          files: release/${{ github.ref_name }}-${{ matrix.network }}.tar.gz
 
   # fsm_release:
   #   if: startsWith(github.ref, 'refs/heads/release') || github.ref == 'refs/heads/main'
@@ -141,38 +139,86 @@ jobs:
   #   secrets:
   #     action_token: ${{ secrets.ACTIONS_TOKEN }}
 
-  # docker:
-  #   if: startsWith(github.ref, 'refs/heads/release') || github.ref == 'refs/tags/v'
-  #   needs: build
-  #   uses: ./.github/workflows/docker.yaml
-  #   with:
-  #     tag: ${{ needs.build.outputs.release_semver }}
+  docker:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      matrix:
+        include:
+          - namespace: test
+            network: testnet
+          - namespace: prod
+            network: mainnet
+    outputs:
+      tags: ${{ steps.meta.outputs.tags }}
 
-  # Only create a new tag if push to develop(prerelease) or main(release)
-  # Will automatically bump "#patch" by default
-  # Use "#major", "#minor", "#patch". "#none" in commit message to adjust bump.
-  #
-  # Requires mobilecoin-ci user R/W access and ACTIONS_TOKEN
-  # tag:
-  #   needs: build
-  #   runs-on: ubuntu-latest
-  #   if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-  #   permissions:
-  #     contents: write
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v2
-  #       with:
-  #         fetch-depth: '0'
-  #     - name: Github Tag Bump
-  #       uses: anothrNick/github-tag-action@1.36.0
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
-  #         CUSTOM_TAG: ${{ steps.release_semver.outputs.semver }}
-  # RELEASE_BRANCHES: main
-  # PRERELEASE_SUFFIX: pre
-  # WITH_V: 'true'
-  # DEFAULT_BUMP: patch
+    steps:
+      - name: Checkout with submodules
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: Cache Build Binaries
+        id: artifact_cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            build_artifacts
+          key: ${{ runner.os }}-${{ matrix.network }}-${{ secrets.CACHE_VERSION }}-build-cargo-artifacts-${{ hashFiles('**/*.rs', '**/*.proto', '**/Cargo.toml')}}
+
+      # Caching seems to not work when you push a tag (I think because of scope) so download the just uploaded release
+      # See issue here: https://github.com/actions/cache/issues/556
+      - name: Download Release on Cache Miss
+        if: steps.artifact_cache.outputs.cache-hit != 'true'
+        uses: duhow/download-github-release-assets@v1
+        with:
+          tag: ${{ github.ref_name }}
+          files: |
+            ${{ github.ref_name }}-${{ matrix.network }}.tar.gz
+          target: /var/tmp/${{ github.ref_name }}-${{ matrix.network }}.tar.gz
+
+      - name: Extract Release
+        if: steps.artifact_cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p build_artifacts/${{ matrix.network }}
+          tar xzvf /var/tmp/${{ github.ref_name }}-${{ matrix.network }}.tar.gz -C build_artifacts/${{ matrix.network }}
+      - name: Generate Docker Tags
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: ${{ env.DOCKERHUB_REPO }}
+          flavor: |
+            latest=false
+            suffix=-${{ matrix.network }}
+          tags: |
+            type=semver,pattern=v{{version}},priority=20
+            type=sha,priority=10
+      - name: Setup Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+        with:
+          install: true
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Publish to DockerHub
+        id: docker_publish_dockerhub
+        uses: docker/build-push-action@v2
+        with:
+          build-args: |
+            NETWORK=${{ matrix.network }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          context: .
+          file: Dockerfile.ci
+          push: true
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
 
   # deploy-develop:
   #   if: github.ref == 'refs/heads/develop'
