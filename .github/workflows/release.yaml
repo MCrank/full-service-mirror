@@ -10,40 +10,19 @@ env:
   # INGEST_ENCLAVE_CSS: /var/tmp/ingest-enclave.css
 
 on:
-  workflow_call:
-    secrets:
-      action_token:
-        required: true
+  # workflow_call:
+  #   secrets:
+  #     action_token:
+  #       required: true
+  push:
+    tags:
+      - 'v*'
 
 jobs:
-  tag:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    outputs:
-      new_tag: ${{ steps.tag_bump.outputs.new_tag }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: '0'
-      - name: Github Tag Bump
-        id: tag_bump
-        uses: anothrNick/github-tag-action@1.36.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.action_token }}
-          RELEASE_BRANCHES: main
-          PRERELEASE_SUFFIX: pre
-          WITH_V: 'true'
-          DEFAULT_BUMP: patch
-          # DRY_RUN: true
-
   pre-release:
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/heads/release')
     permissions:
       contents: write
-    needs: tag
     strategy:
       matrix:
         include:
@@ -53,6 +32,17 @@ jobs:
             network: mainnet
 
     steps:
+      # Does the tag have the "pre" key word in it? Will mark it as prerelease
+      - name: Is Prerelease
+        shell: bash
+        id: prerelease
+        run: |
+          if [[ "${GITHUB_REF}" =~ pre ]]; then
+            echo ::set-output name=value::true
+          else
+            echo ::set-output name=value::false
+          fi
+
       # Download the build artifact if it is release/v* branch
       - name: Download Build Artifact
         id: artifact_download
@@ -65,13 +55,13 @@ jobs:
         run: ls -la /var/tmp/
 
       - name: Create Prerelease Artifact
-        run: mv /var/tmp/${{ github.sha }}-${{ matrix.network }}.tar.gz /var/tmp/${{ needs.tag.outputs.new_tag }}-${{ matrix.network }}.tar.gz
+        run: mv /var/tmp/${{ github.sha }}-${{ matrix.network }}.tar.gz /var/tmp/${{ github.ref_name }}-${{ matrix.network }}.tar.gz
 
       - name: Upload Release
         uses: softprops/action-gh-release@v1
         with:
-          prerelease: true
-          files: /var/tmp/${{ needs.tag.outputs.new_tag }}-${{ matrix.network }}.tar.gz
+          prerelease: ${{ steps.prerelease.outputs.value }}
+          files: /var/tmp/${{ github.ref_name }}-${{ matrix.network }}.tar.gz
 
       # - name: Extract Release
       #   run: |
