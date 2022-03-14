@@ -13,7 +13,6 @@ jobs:
   #
   # Requires mobilecoin-ci user R/W access and ACTIONS_TOKEN
   tag:
-    needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
