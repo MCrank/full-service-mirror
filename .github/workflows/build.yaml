@@ -147,6 +147,7 @@ jobs:
       - name: Extract Release
         if: startsWith(github.ref, 'refs/tags/v') && steps.prerelease.outputs.value == 'false'
         run: |
+          rm -rfv build_artifacts/${{ matrix.network }}
           mkdir -p build_artifacts/${{ matrix.network }}
           tar xzvf /var/tmp/${{ steps.current_release.outputs.tag_name }}-${{ matrix.network }}.tar.gz -C build_artifacts/${{ matrix.network }}
 
