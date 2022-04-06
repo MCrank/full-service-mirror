@@ -21,12 +21,12 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     # Needs write permission for publishing release
     permissions:
       contents: write
     container:
-      image: mobilecoin/rust-sgx-base:0.0.3
+      image: mobilecoin/rust-sgx-base:0.0.4
     outputs:
       prerelease: ${{ steps.prerelease.outputs.value }}
     strategy:
