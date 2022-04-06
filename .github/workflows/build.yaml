@@ -1,10 +1,9 @@
 name: fsm-build
 
 env:
-  # DOCKERHUB_REPO: mobilecoin/full-service-mirror
-  DOCKERHUB_REPO: mcrank/full-service-mirror
-  # CHART_RELEASE_NAME: full-service-mirror
-  # CHART_PATH: ./chart
+  DOCKERHUB_REPO: mobilecoin/full-service-mirror
+  CHART_RELEASE_NAME: full-service-mirror
+  CHART_PATH: ./chart
   SGX_MODE: HW
   IAS_MODE: PROD
   RUST_BACKTRACE: full
@@ -22,12 +21,14 @@ on:
 
 jobs:
   build:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     # Needs write permission for publishing release
     permissions:
       contents: write
     container:
       image: mobilecoin/rust-sgx-base:0.0.3
+    outputs:
+      prerelease: ${{ steps.prerelease.outputs.value }}
     strategy:
       matrix:
         include:
@@ -42,7 +43,7 @@ jobs:
         with:
           submodules: recursive
 
-      # CACHE_VERSION is 'date --iso-8601=minutes' and is used to invalidate cache if needed
+      # CACHE_VERSION secret is 'date --iso-8601=minutes' and is used to invalidate cache if needed
       - name: Cache Build Binaries
         id: artifact_cache
         uses: actions/cache@v2
@@ -86,7 +87,7 @@ jobs:
       - name: Copy binaries to cache folder
         if: steps.artifact_cache.outputs.cache-hit != 'true'
         run: |
-          mkdir -p build_artifacts/${{ matrix.network }}/bin
+          mkdir -pv build_artifacts/${{ matrix.network }}/bin
           cp /var/tmp/*.css build_artifacts/${{ matrix.network }}
           cp -R create-release/package-${{ matrix.network }}/* build_artifacts/${{ matrix.network }}
           cp full-service/target/release/full-service build_artifacts/${{ matrix.network }}/bin/
@@ -98,7 +99,7 @@ jobs:
       # Create and Upload an Artifact on Push and Not a Tag
       - name: Create Artifact
         run: |
-          mkdir -p artifact
+          mkdir -pv artifact
           cd artifact && tar -czvf ${{ github.sha }}-${{ matrix.network }}.tar.gz -C ../build_artifacts/${{ matrix.network }}/ .
 
       - name: Upload Artifact
@@ -106,8 +107,6 @@ jobs:
         with:
           name: full-service-mirror_${{ matrix.network }}
           path: artifact/${{ github.sha }}-${{ matrix.network }}.tar.gz
-
-      # ****** TAGS ******
 
       # Does the tag have the "pre" key word in it? Will mark it as prerelease
       - name: Is Prerelease
@@ -148,35 +147,35 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v') && steps.prerelease.outputs.value == 'false'
         run: |
           rm -rfv build_artifacts/${{ matrix.network }}
-          mkdir -p build_artifacts/${{ matrix.network }}
+          mkdir -pv build_artifacts/${{ matrix.network }}
           tar xzvf /var/tmp/${{ steps.current_release.outputs.tag_name }}-${{ matrix.network }}.tar.gz -C build_artifacts/${{ matrix.network }}
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          mkdir -p release
+          mkdir -pv release
           cd release && tar -czvf ${{ github.ref_name }}-${{ matrix.network }}.tar.gz -C ../build_artifacts/${{ matrix.network }}/ .
+
+      - name: Generate MD5
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          cd release && md5sum ${{ github.ref_name }}-${{ matrix.network }}.tar.gz > ${{ github.ref_name }}-${{ matrix.network }}.md5
 
       - name: Upload Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v1
         with:
           prerelease: ${{ steps.prerelease.outputs.value }}
-          files: release/${{ github.ref_name }}-${{ matrix.network }}.tar.gz
-
-  # fsm_release:
-  #   if: startsWith(github.ref, 'refs/heads/release') || github.ref == 'refs/heads/main'
-  #   permissions:
-  #     contents: write
-  #   needs: build
-  #   uses: ./.github/workflows/release.yaml
-  #   secrets:
-  #     action_token: ${{ secrets.ACTIONS_TOKEN }}
+          files: |
+            release/${{ github.ref_name }}-${{ matrix.network }}.tar.gz
+            release/${{ github.ref_name }}-${{ matrix.network }}.md5
 
   docker:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     needs: build
+    outputs:
+      tags: ${{ steps.meta.outputs.tags }}
     strategy:
       matrix:
         include:
@@ -184,8 +183,6 @@ jobs:
             network: testnet
           - namespace: prod
             network: mainnet
-    outputs:
-      tags: ${{ steps.meta.outputs.tags }}
 
     steps:
       - name: Checkout with submodules
@@ -215,8 +212,9 @@ jobs:
       - name: Extract Release
         if: steps.artifact_cache.outputs.cache-hit != 'true'
         run: |
-          mkdir -p build_artifacts/${{ matrix.network }}
+          mkdir -pv build_artifacts/${{ matrix.network }}
           tar xzvf /var/tmp/${{ github.ref_name }}-${{ matrix.network }}.tar.gz -C build_artifacts/${{ matrix.network }}
+
       - name: Generate Docker Tags
         id: meta
         uses: docker/metadata-action@v3
@@ -228,6 +226,7 @@ jobs:
           tags: |
             type=semver,pattern=v{{version}},priority=20
             type=sha,priority=10
+
       - name: Setup Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v1
@@ -254,8 +253,21 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           tags: ${{ steps.meta.outputs.tags }}
 
-  # deploy-develop:
-  #   if: github.ref == 'refs/heads/develop'
+      - name: Deploy
+        if: ${{ matrix.network == 'testnet' }}
+        uses: ./.github/workflows/deploy.yaml
+        with:
+          prerelease: ${{ needs.build.outputs.prerelease }}
+          tags: ${{ steps.meta.outputs.tags }}
+
+  # deploy-staging:
+  #   if: github.ref == 'refs/heads/release/'
+  #   # Force it to only run testnet
+  #   strategy:
+  #     matrix:
+  #       include:
+  #         - namespace: test
+  #           network: testnet
   #   needs: docker
   #   runs-on: ubuntu-latest
   #   container:
@@ -264,20 +276,25 @@ jobs:
   #   env:
   #     RANCHER_URL: ${{ secrets.RANCHER_URL }}
   #     RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
-  #     RANCHER_CLUSTER: $${{ secrets.DEVELOP_CLUSTER }}
-  #     RANCHER_CLUSTER_NAMESPACE: ${{ secrets.DEVELOP_NAMESPACE }}
-  #     VALUES: ${{ secrets.TESTNET_VALUES }}
-  #     TAGS: $${{ needs.docker.outputs.tags }}
+  #     RANCHER_CLUSTER: $${{ secrets.STAGING_CLUSTER }}
+  #     RANCHER_CLUSTER_NAMESPACE: ${{ secrets.STAGING_NAMESPACE }}
+  #     VALUES: ${{ secrets.STAGING_VALUES }}
+  #     TAGS: ${{ needs.docker.outputs.tags }}
   #   steps:
   #     - name: Checkout
   #       uses: actions/checkout@v2
   #     - name: Deploy
   #       run: |
   #         apk add --no-cache bash curl jq
-  #         .github/workflows/helpers/rancher_deploy.sh
+  #         .github/workflow/helpers/rancher_deploy.sh
 
-  # deploy-main:
+  # deploy-production:
   #   if: startsWith(github.ref, 'refs/tags/')
+  #   strategy:
+  #     matrix:
+  #       include:
+  #         - namespace: test
+  #           network: testnet
   #   needs: docker
   #   runs-on: ubuntu-latest
   #   container:
@@ -286,9 +303,9 @@ jobs:
   #   env:
   #     RANCHER_URL: ${{ secrets.RANCHER_URL }}
   #     RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
-  #     RANCHER_CLUSTER: ${{ secrets.DEVELOP_CLUSTER }}
-  #     RANCHER_CLUSTER_NAMESPACE: ${{ secrets.MAIN_NAMESPACE }}
-  #     VALUES: ${{ secrets.TESTNET_VALUES }}
+  #     RANCHER_CLUSTER: ${{ secrets.PRODUCTION_CLUSTER }}
+  #     RANCHER_CLUSTER_NAMESPACE: ${{ secrets.PRODUCTION_NAMESPACE }}
+  #     VALUES: ${{ secrets.PRODUCTION_VALUES }}
   #     TAGS: ${{ needs.docker.outputs.tags }}
   #   steps:
   #     - name: Checkout

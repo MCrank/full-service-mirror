@@ -1,0 +1,55 @@
+name: fsm-deploy
+
+on:
+  workflow_call:
+    inputs:
+      prerelease:
+        required: true
+        type: string
+      tags:
+        required: true
+        type: string
+
+jobs:
+  deploy-staging:
+    if: ${{ inputs.prerelease == 'true'}}
+    # Force it to only run testnet
+    runs-on: ubuntu-latest
+    container:
+      image: alpine/helm
+      options: --entrypoint /bin/sh
+    env:
+      RANCHER_URL: ${{ secrets.RANCHER_URL }}
+      RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
+      RANCHER_CLUSTER: $${{ secrets.STAGING_CLUSTER }}
+      RANCHER_CLUSTER_NAMESPACE: ${{ secrets.STAGING_NAMESPACE }}
+      VALUES: ${{ secrets.STAGING_VALUES }}
+      TAGS: ${{ inputs.tags }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Deploy
+        run: |
+          apk add --no-cache bash curl jq
+          .github/workflow/helpers/rancher_deploy.sh
+
+  deploy-production:
+    if: ${{ inputs.prerelease == 'false' }}
+    runs-on: ubuntu-latest
+    container:
+      image: alpine/helm
+      options: --entrypoint /bin/sh
+    env:
+      RANCHER_URL: ${{ secrets.RANCHER_URL }}
+      RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
+      RANCHER_CLUSTER: ${{ secrets.PRODUCTION_CLUSTER }}
+      RANCHER_CLUSTER_NAMESPACE: ${{ secrets.PRODUCTION_NAMESPACE }}
+      VALUES: ${{ secrets.PRODUCTION_VALUES }}
+      TAGS: ${{ inputs.tags }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Deploy
+        run: |
+          apk add --no-cache bash curl jq
+          .github/workflows/helpers/rancher_deploy.sh
