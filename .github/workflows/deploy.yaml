@@ -28,6 +28,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Inputs
+        run: |
+          echo ${{ inputs.prerelease }}
+          echo ${{ inputs.tags }}
       - name: Deploy
         run: |
           apk add --no-cache bash curl jq
