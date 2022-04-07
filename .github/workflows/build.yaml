@@ -269,12 +269,18 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
 
   deploy:
-    if: needs.docker.outputs.network == 'testnet'
+    # if: needs.docker.outputs.network == 'testnet'
     needs: [docker]
     uses: ./.github/workflows/deploy.yaml
     with:
       prerelease: ${{ needs.docker.outputs.prerelease }}
       tags: ${{ needs.docker.outputs.tags }}
+    secrets:
+      RANCHER_URL: ${{ secrets.RANCHER_URL }}
+      RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
+      RANCHER_CLUSTER: ${{ secret.RANCHER_CLUSTER }}
+      TESTNET_VALUES: ${{ secret.TESTNET_VALUES }}
+      MAINNET_VALUES: ${{ secret.MAINNET_VALUES }}
 
   # deploy-staging:
   #   if: github.ref == 'refs/heads/release/'

@@ -9,11 +9,28 @@ on:
       tags:
         required: true
         type: string
+    secrets:
+      RANCHER_URL:
+        required: true
+      RANCHER_TOKEN:
+        required: true
+      RANCHER_CLUSTER:
+        required: true
+      TESTNET_VALUES:
+        required: true
+      MAINNET_VALUES:
+        required: true
 
 jobs:
   deploy-staging:
     if: ${{ inputs.prerelease == 'true'}}
-    # Force it to only run testnet
+    strategy:
+      matrix:
+        include:
+          - network: TESTNET
+            namespace: fsm-staging-testnet
+          - network: MAINNET
+            namespace: fsm-staging-mainnet
     runs-on: ubuntu-latest
     container:
       image: alpine/helm
@@ -22,17 +39,16 @@ jobs:
       RANCHER_URL: ${{ secrets.RANCHER_URL }}
       RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
       RANCHER_CLUSTER: $${{ secrets.STAGING_CLUSTER }}
-      RANCHER_CLUSTER_NAMESPACE: ${{ secrets.STAGING_NAMESPACE }}
-      VALUES: ${{ secrets.STAGING_VALUES }}
+      RANCHER_CLUSTER_NAMESPACE: ${{ matrix.namespace }}
+      VALUES: ${{ secrets.${{ matrix.network }}_VALUES }}
       TAGS: ${{ inputs.tags }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Inputs
-        run: |
-          echo IsPrerelease - ${{ inputs.prerelease }}
-          echo Tags - ${{ inputs.tags }}
+      - name: Debug
+        run: echo $VALUES
 
       - name: Deploy
         run: |
