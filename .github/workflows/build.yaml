@@ -176,6 +176,7 @@ jobs:
     needs: build
     outputs:
       tags: ${{ steps.meta.outputs.tags }}
+      network: ${{ steps.matrixNetwork.outputs.network }}
     strategy:
       matrix:
         include:
@@ -185,6 +186,17 @@ jobs:
             network: mainnet
 
     steps:
+      # Only want to deploy for the MC Test Network so create output to pass to deploy Job
+      - name: Set Matrix Network Output
+        shell: bash
+        id: matrixNetwork
+        run: |
+          if [[ "${{matrix.network}}" =~ testnet ]]; then
+            echo "::set-output" name=network::true"
+          else
+            echo "::set-output" name=network::false"
+          fi
+
       - name: Checkout with submodules
         uses: actions/checkout@v2
         with:
@@ -253,12 +265,13 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           tags: ${{ steps.meta.outputs.tags }}
 
-      - name: Deploy
-        if: ${{ matrix.network == 'testnet' }}
-        uses: ./.github/workflows/deploy.yaml
-        with:
-          prerelease: ${{ needs.build.outputs.prerelease }}
-          tags: ${{ steps.meta.outputs.tags }}
+  deploy:
+    if: ${{ needs.docker.outputs.network == 'testnet' }}
+    needs: [build, docker]
+    uses: ./.github/workflows/deploy.yaml
+    with:
+      prerelease: ${{ needs.build.outputs.prerelease }}
+      tags: ${{ needs.docker.outputs.tags }}
 
   # deploy-staging:
   #   if: github.ref == 'refs/heads/release/'
