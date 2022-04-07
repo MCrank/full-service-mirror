@@ -278,9 +278,9 @@ jobs:
     secrets:
       RANCHER_URL: ${{ secrets.RANCHER_URL }}
       RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
-      RANCHER_CLUSTER: ${{ secret.RANCHER_CLUSTER }}
-      TESTNET_VALUES: ${{ secret.TESTNET_VALUES }}
-      MAINNET_VALUES: ${{ secret.MAINNET_VALUES }}
+      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
+      TESTNET_VALUES: ${{ secrets.TESTNET_VALUES }}
+      MAINNET_VALUES: ${{ secrets.MAINNET_VALUES }}
 
   # deploy-staging:
   #   if: github.ref == 'refs/heads/release/'
