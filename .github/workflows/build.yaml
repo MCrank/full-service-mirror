@@ -191,11 +191,10 @@ jobs:
         shell: bash
         id: matrixNetwork
         run: |
-          if [[ "${{matrix.network}}" =~ testnet ]]; then
-            echo "::set-output" name=network::true"
-          else
-            echo "::set-output" name=network::false"
-          fi
+          echo "::set-output name=network::${{ matrix.network }}"
+
+      - name: Debug output
+        run: echo ${{ steps.matrixNetwork.outputs.network }}
 
       - name: Checkout with submodules
         uses: actions/checkout@v2
