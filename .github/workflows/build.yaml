@@ -1,9 +1,6 @@
 name: fsm-build
 
 env:
-  # DOCKERHUB_REPO is also defined in the deploy.yaml since
-  # you can't access the env from jobs.<job_id>.with.<with_id> for workflow_call
-  # https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability
   DOCKERHUB_REPO: mobilecoin/full-service-mirror
   CHART_RELEASE_NAME: full-service-mirror
   CHART_PATH: ./chart
@@ -179,8 +176,6 @@ jobs:
     needs: build
     outputs:
       prerelease: ${{ needs.build.outputs.prerelease }}
-      tags: ${{ steps.meta.outputs.tags }}
-      network: ${{ steps.matrixNetwork.outputs.network }}
       dockerhub_repo: ${{ env.DOCKERHUB_REPO }}
     strategy:
       matrix:
@@ -191,19 +186,6 @@ jobs:
             network: mainnet
 
     steps:
-      # Only want to deploy for the MC Test Network so create output to pass to deploy Job
-      - name: Set Matrix Network Output
-        shell: bash
-        id: matrixNetwork
-        run: |
-          echo "::set-output name=network::${{ matrix.network }}"
-
-      - name: Debug output
-        run: |
-          echo ${{ needs.build.outputs.prerelease }}
-          echo ${{ steps.meta.outputs.tags }}
-          echo ${{ steps.matrixNetwork.outputs.network }}
-
       - name: Checkout with submodules
         uses: actions/checkout@v2
         with:
@@ -243,7 +225,7 @@ jobs:
             latest=false
             suffix=-${{ matrix.network }}
           tags: |
-            type=semver,pattern=v{{raw}},priority=20
+            type=semver,pattern={{raw}},priority=20
             type=sha,priority=10
 
       - name: Setup Docker Buildx
@@ -273,7 +255,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
 
   deploy:
-    # if: needs.docker.outputs.network == 'testnet'
     needs: [docker]
     uses: ./.github/workflows/deploy.yaml
     with:
@@ -285,58 +266,3 @@ jobs:
       RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
       TESTNET_VALUES: ${{ secrets.TESTNET_VALUES }}
       MAINNET_VALUES: ${{ secrets.MAINNET_VALUES }}
-
-  # deploy-staging:
-  #   if: github.ref == 'refs/heads/release/'
-  #   # Force it to only run testnet
-  #   strategy:
-  #     matrix:
-  #       include:
-  #         - namespace: test
-  #           network: testnet
-  #   needs: docker
-  #   runs-on: ubuntu-latest
-  #   container:
-  #     image: alpine/helm
-  #     options: --entrypoint /bin/sh
-  #   env:
-  #     RANCHER_URL: ${{ secrets.RANCHER_URL }}
-  #     RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
-  #     RANCHER_CLUSTER: $${{ secrets.STAGING_CLUSTER }}
-  #     RANCHER_CLUSTER_NAMESPACE: ${{ secrets.STAGING_NAMESPACE }}
-  #     VALUES: ${{ secrets.STAGING_VALUES }}
-  #     TAGS: ${{ needs.docker.outputs.tags }}
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v2
-  #     - name: Deploy
-  #       run: |
-  #         apk add --no-cache bash curl jq
-  #         .github/workflow/helpers/rancher_deploy.sh
-
-  # deploy-production:
-  #   if: startsWith(github.ref, 'refs/tags/')
-  #   strategy:
-  #     matrix:
-  #       include:
-  #         - namespace: test
-  #           network: testnet
-  #   needs: docker
-  #   runs-on: ubuntu-latest
-  #   container:
-  #     image: alpine/helm
-  #     options: --entrypoint /bin/sh
-  #   env:
-  #     RANCHER_URL: ${{ secrets.RANCHER_URL }}
-  #     RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
-  #     RANCHER_CLUSTER: ${{ secrets.PRODUCTION_CLUSTER }}
-  #     RANCHER_CLUSTER_NAMESPACE: ${{ secrets.PRODUCTION_NAMESPACE }}
-  #     VALUES: ${{ secrets.PRODUCTION_VALUES }}
-  #     TAGS: ${{ needs.docker.outputs.tags }}
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v2
-  #     - name: Deploy
-  #       run: |
-  #         apk add --no-cache bash curl jq
-  #         .github/workflows/helpers/rancher_deploy.sh
