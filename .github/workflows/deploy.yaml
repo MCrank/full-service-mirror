@@ -27,12 +27,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - network: TESTNET
+          - network: testnet
             namespace: fsm-staging-testnet
-            values: ${{ secrets.TESTNET_VALUES }}
-          - network: MAINNET
+            values: TESTNET_VALUES
+          - network: mainnet
             namespace: fsm-staging-mainnet
-            values: ${{ secrets.MAINNET_VALUES }}
+            values: MAINNET_VALUES
     runs-on: ubuntu-latest
     container:
       image: alpine/helm
@@ -42,7 +42,7 @@ jobs:
       RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
       RANCHER_CLUSTER: $${{ secrets.STAGING_CLUSTER }}
       RANCHER_CLUSTER_NAMESPACE: ${{ matrix.namespace }}
-      VALUES: ${{ secrets.(${{ matrix.network }}_VALUES) }}
+      VALUES: ${{ secrets[matrix.network] }}
       TAGS: ${{ inputs.tags }}
 
     steps:
@@ -62,12 +62,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - network: TESTNET
+          - network: testnet
             namespace: fsm-prod-testnet
-            values: ${{ secrets.TESTNET_VALUES }}
-          - network: MAINNET
+            values: TESTNET_VALUES
+          - network: mainnet
             namespace: fsm-prod-mainnet
-            values: ${{ secrets.MAINNET_VALUES }}
+            values: MAINNET_VALUES
     runs-on: ubuntu-latest
     container:
       image: alpine/helm
@@ -77,7 +77,7 @@ jobs:
       RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
       RANCHER_CLUSTER: ${{ secrets.PRODUCTION_CLUSTER }}
       RANCHER_CLUSTER_NAMESPACE: ${{ secrets.PRODUCTION_NAMESPACE }}
-      VALUES: ${{ matrix.values }}
+      VALUES: ${{ secrets[matrix.network] }}
       TAGS: ${{ inputs.tags }}
     steps:
       - name: Checkout
