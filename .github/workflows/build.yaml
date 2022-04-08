@@ -2,8 +2,8 @@ name: fsm-build
 
 env:
   DOCKERHUB_REPO: mobilecoin/full-service-mirror
-  CHART_RELEASE_NAME: full-service-mirror
-  CHART_PATH: ./chart
+  # CHART_RELEASE_NAME: full-service-mirror
+  # CHART_PATH: ./chart
   SGX_MODE: HW
   IAS_MODE: PROD
   RUST_BACKTRACE: full
@@ -263,6 +263,7 @@ jobs:
     secrets:
       RANCHER_URL: ${{ secrets.RANCHER_URL }}
       RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
-      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
+      STAGING_CLUSTER: ${{ secrets.STAGING_CLUSTER }}
+      PRODUCTION_CLUSTER: ${{ secrets.PRODUCTION_CLUSTER }}
       TESTNET_VALUES: ${{ secrets.TESTNET_VALUES }}
       MAINNET_VALUES: ${{ secrets.MAINNET_VALUES }}

@@ -1,5 +1,9 @@
 name: fsm-deploy
 
+env:
+  CHART_RELEASE_NAME: full-service-mirror
+  CHART_PATH: ./chart
+
 on:
   workflow_call:
     inputs:
@@ -14,7 +18,9 @@ on:
         required: true
       RANCHER_TOKEN:
         required: true
-      RANCHER_CLUSTER:
+      STAGING_CLUSTER:
+        required: true
+      PRODUCTION_CLUSTER:
         required: true
       TESTNET_VALUES:
         required: true
@@ -42,7 +48,7 @@ jobs:
       RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
       RANCHER_CLUSTER: $${{ secrets.STAGING_CLUSTER }}
       RANCHER_CLUSTER_NAMESPACE: ${{ matrix.namespace }}
-      VALUES: ${{ secrets[matrix.network] }}
+      VALUES: ${{ secrets[matrix.values] }}
       TAGS: ${{ inputs.dockerhub_repo }}:${{ github.ref_name }}-${{ matrix.network }}
 
     steps:
@@ -50,7 +56,10 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Debug
-        run: echo $VALUES
+        run: |
+          echo $VALUES
+          echo $TAGS
+          echo ${{ secrets[matrix.values] }}
 
       - name: Deploy
         run: |
@@ -77,7 +86,7 @@ jobs:
       RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
       RANCHER_CLUSTER: ${{ secrets.PRODUCTION_CLUSTER }}
       RANCHER_CLUSTER_NAMESPACE: ${{ secrets.PRODUCTION_NAMESPACE }}
-      VALUES: ${{ secrets[matrix.network] }}
+      VALUES: ${{ secrets[matrix.values] }}
       TAGS: ${{ inputs.dockerhub_repo }}:${{ github.ref_name }}-${{ matrix.network }}
     steps:
       - name: Checkout
