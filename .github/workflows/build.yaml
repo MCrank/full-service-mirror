@@ -181,6 +181,7 @@ jobs:
       prerelease: ${{ needs.build.outputs.prerelease }}
       tags: ${{ steps.meta.outputs.tags }}
       network: ${{ steps.matrixNetwork.outputs.network }}
+      dockerhub_repo: ${{ env.DOCKERHUB_REPO }}
     strategy:
       matrix:
         include:
@@ -277,6 +278,7 @@ jobs:
     uses: ./.github/workflows/deploy.yaml
     with:
       prerelease: ${{ needs.docker.outputs.prerelease }}
+      dockerhub_repo: ${{ needs.docker.outputs.dockerhub_repo }}
     secrets:
       RANCHER_URL: ${{ secrets.RANCHER_URL }}
       RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
