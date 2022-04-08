@@ -1,6 +1,9 @@
 name: fsm-build
 
 env:
+  # DOCKERHUB_REPO is also defined in the deploy.yaml since
+  # you can't access the env from jobs.<job_id>.with.<with_id> for workflow_call
+  # https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability
   DOCKERHUB_REPO: mobilecoin/full-service-mirror
   CHART_RELEASE_NAME: full-service-mirror
   CHART_PATH: ./chart
@@ -274,7 +277,6 @@ jobs:
     uses: ./.github/workflows/deploy.yaml
     with:
       prerelease: ${{ needs.docker.outputs.prerelease }}
-      docker_repo: ${{ env.DOCKERHUB_REPO }}
     secrets:
       RANCHER_URL: ${{ secrets.RANCHER_URL }}
       RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}

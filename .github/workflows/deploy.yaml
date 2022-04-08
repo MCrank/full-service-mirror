@@ -1,12 +1,12 @@
 name: fsm-deploy
 
+env:
+  DOCKERHUB_REPO: mobilecoin/full-service-mirror
+
 on:
   workflow_call:
     inputs:
       prerelease:
-        required: true
-        type: string
-      docker_repo:
         required: true
         type: string
     secrets:
@@ -42,10 +42,10 @@ jobs:
       RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
       RANCHER_CLUSTER: $${{ secrets.STAGING_CLUSTER }}
       RANCHER_CLUSTER_NAMESPACE: ${{ matrix.namespace }}
-      VALUES: ${{ secrets.[matrix.network] }}
+      VALUES: ${{ secrets[matrix.network] }}
       # mobilecoin/full-service-mirror:v3.1.1-pre.x-testnet
       # inputs.dockerRepo:github.ref_name-matrix.network
-      TAGS: ${{ inputs.docker_repo }}:${{ github.ref_name }}-${{ matrix.network }}
+      TAGS: ${{ env.DOCKERHUB_REPO }}:${{ github.ref_name }}-${{ matrix.network }}
 
     steps:
       - name: Checkout
@@ -79,8 +79,8 @@ jobs:
       RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
       RANCHER_CLUSTER: ${{ secrets.PRODUCTION_CLUSTER }}
       RANCHER_CLUSTER_NAMESPACE: ${{ secrets.PRODUCTION_NAMESPACE }}
-      VALUES: ${{ secrets.[matrix.network] }}
-      TAGS: ${{ inputs.docker_repo }}:${{ github.ref_name }}-${{ matrix.network }}
+      VALUES: ${{ secrets[matrix.network] }}
+      TAGS: ${{ env.DOCKERHUB_REPO }}:${{ github.ref_name }}-${{ matrix.network }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
