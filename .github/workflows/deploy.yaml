@@ -57,8 +57,6 @@ jobs:
       - name: Debug
         run: echo $VALUES
 
-      - name: Set TAGS
-        run:
       - name: Deploy
         run: |
           apk add --no-cache bash curl jq
