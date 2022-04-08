@@ -55,12 +55,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Debug
-        run: |
-          echo $VALUES
-          echo $TAGS
-          echo ${{ secrets[matrix.values] }}
-
       - name: Deploy
         run: |
           apk add --no-cache bash curl jq
