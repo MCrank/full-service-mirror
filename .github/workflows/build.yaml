@@ -239,7 +239,7 @@ jobs:
             latest=false
             suffix=-${{ matrix.network }}
           tags: |
-            type=semver,pattern=v{{version}},priority=20
+            type=semver,pattern=v{{raw}},priority=20
             type=sha,priority=10
 
       - name: Setup Docker Buildx
@@ -274,7 +274,7 @@ jobs:
     uses: ./.github/workflows/deploy.yaml
     with:
       prerelease: ${{ needs.docker.outputs.prerelease }}
-      tags: ${{ needs.docker.outputs.tags }}
+      docker_repo: ${{ env.DOCKERHUB_REPO }}
     secrets:
       RANCHER_URL: ${{ secrets.RANCHER_URL }}
       RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}

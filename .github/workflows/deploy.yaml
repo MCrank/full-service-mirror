@@ -6,7 +6,7 @@ on:
       prerelease:
         required: true
         type: string
-      tags:
+      docker_repo:
         required: true
         type: string
     secrets:
@@ -42,8 +42,10 @@ jobs:
       RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
       RANCHER_CLUSTER: $${{ secrets.STAGING_CLUSTER }}
       RANCHER_CLUSTER_NAMESPACE: ${{ matrix.namespace }}
-      VALUES: ${{ secrets[matrix.network] }}
-      TAGS: ${{ inputs.tags }}
+      VALUES: ${{ secrets.[matrix.network] }}
+      # mobilecoin/full-service-mirror:v3.1.1-pre.x-testnet
+      # inputs.dockerRepo:github.ref_name-matrix.network
+      TAGS: ${{ inputs.docker_repo }}:${{ github.ref_name }}-${{ matrix.network }}
 
     steps:
       - name: Checkout
@@ -55,7 +57,7 @@ jobs:
       - name: Deploy
         run: |
           apk add --no-cache bash curl jq
-          .github/workflow/helpers/rancher_deploy.sh
+          .github/workflows/helpers/rancher_deploy.sh
 
   deploy-production:
     if: ${{ inputs.prerelease == 'false' }}
@@ -77,8 +79,8 @@ jobs:
       RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
       RANCHER_CLUSTER: ${{ secrets.PRODUCTION_CLUSTER }}
       RANCHER_CLUSTER_NAMESPACE: ${{ secrets.PRODUCTION_NAMESPACE }}
-      VALUES: ${{ secrets[matrix.network] }}
-      TAGS: ${{ inputs.tags }}
+      VALUES: ${{ secrets.[matrix.network] }}
+      TAGS: ${{ inputs.docker_repo }}:${{ github.ref_name }}-${{ matrix.network }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
