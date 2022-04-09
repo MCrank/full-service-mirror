@@ -19,7 +19,7 @@ on:
 
 jobs:
   build:
-    runs-on: [self-hosted, linux, large]
+    runs-on: [self-hosted, large]
     # Needs write permission for publishing release
     permissions:
       contents: write
