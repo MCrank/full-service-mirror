@@ -1,0 +1,41 @@
+mirrorServiceTLS: true # Enables TLS for the Mirror Service
+image:
+  repository: mobilecoin/full-service-mirror
+  tag: '%TAG%'
+fullService:
+  enabled: true
+  args:
+    # Example args for testnet
+    - --peer=mc://node1.test.mobilecoin.com/
+    - --peer=mc://node2.test.mobilecoin.com/
+    - --tx-source-url=https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.test.mobilecoin.com/
+    - --tx-source-url=https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node2.test.mobilecoin.com/
+  persistence:
+    enabled: true
+    spec:
+      storageClassName: fast
+      accessModes:
+        - 'ReadWriteOnce'
+      resources:
+        requests:
+          storage: 128Gi
+
+mirrorPrivate:
+  enabled: true
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+mirrorPublic:
+  enabled: true
+  tls: true
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - mirror-service-private
+          topologyKey: 'kubernetes.io/hostname'
