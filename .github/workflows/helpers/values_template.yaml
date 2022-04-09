@@ -1,7 +1,7 @@
 mirrorServiceTLS: true # Enables TLS for the Mirror Service
 image:
   repository: mobilecoin/full-service-mirror
-  tag: ''
+  tag: '%TAG%'
 fullService:
   enabled: true
   args:

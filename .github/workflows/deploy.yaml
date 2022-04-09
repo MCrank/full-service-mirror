@@ -79,7 +79,7 @@ jobs:
       RANCHER_URL: ${{ secrets.RANCHER_URL }}
       RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
       RANCHER_CLUSTER: ${{ secrets.PRODUCTION_CLUSTER }}
-      RANCHER_CLUSTER_NAMESPACE: ${{ secrets.PRODUCTION_NAMESPACE }}
+      RANCHER_CLUSTER_NAMESPACE: ${{ matrix.namespace }}
       VALUES: ${{ secrets[matrix.values] }}
       TAGS: ${{ inputs.dockerhub_repo }}:${{ github.ref_name }}-${{ matrix.network }}
     steps:
