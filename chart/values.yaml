@@ -13,7 +13,7 @@ mirrorServiceTLS: false
 #   tag: ''
 
 image:
-  repository: mcrank/full-service-mirror
+  repository: mobilecoin/full-service-mirror
   tag: 'v3.1.0-testnet'
 
 ledgerValidator:
